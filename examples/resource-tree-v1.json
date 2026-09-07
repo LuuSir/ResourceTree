@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "roots": [
+    {
+      "id": "61b654d1-bf4f-442a-8f8c-d2b5f65a8511",
+      "type": "folder",
+      "name": "哔哩哔哩",
+      "sortOrder": 0,
+      "children": [
+        {
+          "id": "982c281d-23c7-4ecf-a795-302ad1431ef0",
+          "type": "folder",
+          "name": "生产力",
+          "sortOrder": 0,
+          "children": [
+            {
+              "id": "ab4547ec-3b3f-4d71-a519-d8dd8aa2a3e1",
+              "type": "item",
+              "name": "新三国up锐评老三国16：我与老贼，势不两立！",
+              "sortOrder": 0,
+              "content": "BV1Futr6xEkb",
+              "tags": ["三国", "历史", "锐评"],
+              "action": {
+                "type": "COPY_AND_LAUNCH",
+                "text": "BV1Futr6xEkb",
+                "packageName": "tv.danmaku.bili"
+              }
+            },
+            {
+              "id": "65f79d78-bf34-4891-8a91-129a74fb9ec4",
+              "type": "item",
+              "name": "编程学习笔记",
+              "sortOrder": 1,
+              "content": "先理解问题，再编写代码。",
+              "tags": ["编程", "笔记"],
+              "action": {
+                "type": "COPY",
+                "text": "先理解问题，再编写代码。",
+                "packageName": ""
+              }
+            }
+          ]
+        },
+        {
+          "id": "0114849f-f98f-4793-aa86-f3c6a43c8252",
+          "type": "folder",
+          "name": "生命力",
+          "sortOrder": 1,
+          "children": [
+            {
+              "id": "b5ad2fb4-dd38-43e5-b252-f61d0f66e2ab",
+              "type": "item",
+              "name": "给自己的一句话",
+              "sortOrder": 0,
+              "content": "每天留一点时间给生活。",
+              "tags": [],
+              "action": {
+                "type": "NONE",
+                "text": "",
+                "packageName": ""
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

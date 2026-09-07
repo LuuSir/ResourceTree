@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ResourceTree 导出器离线界面验证</title>
+<body style="font:16px/1.8 sans-serif;padding:30px;background:#f5f7f6">
+<h1>ResourceTree 导出器离线界面验证</h1>
+<p>此页面仅使用人工数据，所有 API 都由本地模拟。不会访问 Bilibili，也不代表登录态验证通过。</p>
+<label>测试场景：<select id="scenario">
+    <option value="success">成功：45 个视频、2 个跳过项、1 个空收藏夹</option>
+    <option value="slow">慢速：用于测试取消</option>
+    <option value="error">第二页 API 错误：应禁止下载</option>
+    <option value="logout">尚未登录</option>
+    <option value="gap">数量差异：标注 48 项，返回 47 项</option>
+    <option value="empty-zero">越界页总数归零：标注 15 项，返回 14 项</option>
+</select></label>
+<p>点击右下角“导出 ResourceTree”。切换场景后点击“重新读取收藏夹”。</p>
+<p id="requests">模拟请求数：0</p>
+<p id="host-clicks">模拟站点捕获的下载点击：0</p>
+<button id="old-download">验证旧版下载会被站点捕获</button>
+<script>
+    let requestCount = 0;
+    let hostClicks = 0;
+    // Model the host site's document-level capture handler. A local download
+    // anchor in the main document would be rewritten/routed; the fixture blocks
+    // navigation so that this regression test never opens a malformed address.
+    document.addEventListener('click', event => {
+        const anchor = event.target.closest?.('a');
+        if (!anchor?.href.startsWith('blob:')) return;
+        event.preventDefault();
+        anchor.href = 'https://example.invalid/misrouted?spm_id_from=fixture';
+        document.getElementById('host-clicks').textContent = `模拟站点捕获的下载点击：${++hostClicks}`;
+    }, true);
+    document.getElementById('old-download').addEventListener('click', () => {
+        const url = URL.createObjectURL(new Blob(['{}']));
+        const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'old-fixture.json';
+        document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+    });
+    window.GM_xmlhttpRequest = function (options) {
+        const scenario = document.getElementById('scenario').value;
+        document.getElementById('requests').textContent = `模拟请求数：${++requestCount}`;
+        const url = new URL(options.url);
+        setTimeout(() => {
+            let data, code = 0;
+            if (url.pathname === '/x/web-interface/nav') data = { isLogin: scenario !== 'logout', mid: 101, uname: '离线测试账号' };
+            else if (url.pathname === '/x/v3/fav/folder/created/list-all') data = { count: 2, list: [
+                { id: 101, title: '生产力 <测试标题>', media_count: 47 }, { id: 102, title: '空收藏夹', media_count: 0 },
+            ] };
+            else if (url.pathname === '/x/v3/fav/resource/list') {
+                const page = Number(url.searchParams.get('pn'));
+                let all = url.searchParams.get('media_id') === '102' ? [] : [
+                    ...Array.from({ length: 45 }, (_, i) => ({ id: i + 1, type: 2, title: `示例视频 ${i + 1}`, bvid: `BVExample${i + 1}` })),
+                    { id: 46, type: 2, title: '失效示例', bvid: '' }, { id: 47, type: 12, title: '非视频示例' },
+                ];
+                if (scenario === 'empty-zero') all = all.slice(0, 14);
+                data = { info: { media_count: all.length + (scenario === 'gap' && all.length ? 1 : 0) }, has_more: page * 20 < all.length, medias: all.slice((page - 1) * 20, page * 20) };
+                if (scenario === 'empty-zero' && all.length) {
+                    data.info.media_count = page === 1 ? 15 : 0;
+                    if (page > 1) data.medias = null;
+                }
+                if (scenario === 'error' && page === 2) code = -403;
+            } else throw new Error('Unexpected endpoint');
+            options.onload({ status: 200, responseText: JSON.stringify({ code, message: code ? '离线模拟：权限不足' : '0', data }) });
+        }, scenario === 'slow' ? 2500 : 250);
+    };
+</script>
+<script src="/bilibili-fav-export.user.js"></script>
+<!-- Repeated injection intentionally verifies bootstrap idempotence. -->
+<script src="/bilibili-fav-export.user.js"></script>
+</body>
+</html>

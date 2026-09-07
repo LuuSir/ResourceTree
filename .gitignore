@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local Android SDK configuration
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Kotlin and native build caches
+.kotlin/
+.externalNativeBuild/
+.cxx/
+
+# Android outputs and local captures
+captures/
+*.apk
+*.aab
+
+# Local logs and generated reports
+*.log
+*.hprof
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Exported personal data (keep checked-in examples under examples/)
+resourcetree-*.json
