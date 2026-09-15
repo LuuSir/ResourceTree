@@ -24,7 +24,7 @@ private data class TransferRequest(val ids: Set<String>, val copy: Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, onEdit: (ResourceNode) -> Unit) {
+fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, onEdit: (ResourceNode) -> Unit, onClipboardRules: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var menu by remember { mutableStateOf(false) }
@@ -79,6 +79,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
                                 try { exporter.launch("ResourceTree-${java.time.LocalDate.now()}.json") }
                                 catch (_: Exception) { vm.notify("未找到系统文件选择器") }
                             })
+                            DropdownMenuItem(text = { Text("剪贴板规则") }, onClick = { menu = false; onClipboardRules() })
                             DropdownMenuItem(text = { Text("关于") }, onClick = { menu = false; about = true })
                         }
                     }

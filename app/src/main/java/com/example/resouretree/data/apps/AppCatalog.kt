@@ -11,10 +11,29 @@ import java.text.Collator
 
 data class InstalledApp(val name: String, val packageName: String, val icon: Bitmap? = null)
 
-fun interface AppCatalog { suspend fun load(): List<InstalledApp> }
+fun interface AppCatalog {
+    suspend fun load(): List<InstalledApp>
+    suspend fun find(packageName: String): InstalledApp? = null
+    suspend fun resolveTarget(candidates: List<String>): String =
+        candidates.firstOrNull { find(it) != null } ?: candidates.first()
+}
 
 class AndroidAppCatalog(context: Context) : AppCatalog {
     private val appContext = context.applicationContext
+
+    override suspend fun resolveTarget(candidates: List<String>): String = withContext(Dispatchers.IO) {
+        candidates.firstOrNull { appContext.packageManager.getLaunchIntentForPackage(it) != null } ?: candidates.first()
+    }
+
+    @Suppress("DEPRECATION")
+    override suspend fun find(packageName: String): InstalledApp? = withContext(Dispatchers.IO) {
+        val pm = appContext.packageManager
+        try {
+            val info = pm.getApplicationInfo(packageName, 0)
+            if (!info.enabled) null else InstalledApp(info.loadLabel(pm).toString(), packageName,
+                runCatching { info.loadIcon(pm).toBitmap(96, 96) }.getOrNull())
+        } catch (_: android.content.pm.PackageManager.NameNotFoundException) { null }
+    }
 
     @Suppress("DEPRECATION")
     override suspend fun load(): List<InstalledApp> = withContext(Dispatchers.IO) {

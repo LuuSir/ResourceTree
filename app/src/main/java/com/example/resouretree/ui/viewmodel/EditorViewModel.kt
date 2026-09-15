@@ -22,6 +22,7 @@ data class EditorState(
     val name: String = "", val content: ResourceContent = ResourceContent(), val tags: String = "",
     val importingMedia: Boolean = false,
     val actionType: ActionType = ActionType.COPY, val target: String = "",
+    val targetApp: InstalledApp? = null, val targetLoading: Boolean = false,
     val apps: List<InstalledApp> = emptyList(), val appsLoading: Boolean = false, val appsError: String? = null
 )
 
@@ -71,6 +72,17 @@ class EditorViewModel(
                 mutable.value = mutable.value.copy(appsLoading = false, appsError = "无法读取应用列表。请允许系统的应用列表访问提示，然后重试。")
             }
         }
+    }
+    suspend fun loadTarget() {
+        val target = state.value.target
+        mutable.value = mutable.value.copy(targetApp = null, targetLoading = target.isNotBlank())
+        if (target.isBlank()) return
+        try {
+            val app = state.value.apps.find { it.packageName == target } ?: appCatalog.find(target)
+            if (state.value.target == target) mutable.value = mutable.value.copy(targetApp = app)
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { /* The configured package remains usable even if its label is unavailable. */ }
+        finally { if (state.value.target == target) mutable.value = mutable.value.copy(targetLoading = false) }
     }
     fun selectApp(app: InstalledApp) { change { it.copy(target = app.packageName) } }
     fun selectContentType(type: ContentType) {

@@ -1,5 +1,7 @@
 # 验证结果
 
+最新规则配置版本（2026-09-15）：assembleDebug、unit tests、Android tests、lint 均完成；80 项本地测试、16 项真机测试通过。自动预填不再扫描应用列表，支持编辑前缀和候选包名。已覆盖安装；安装前后 Room v3 的 890 个节点与 metadata 逐行一致。详情见 [CLIPBOARD-RULES.md](CLIPBOARD-RULES.md)。下文为此前版本的验证记录。
+
 最新剪贴板草稿版本（2026-09-15）：assembleDebug、unit tests、Android tests、lint 均已完成；73 项本地测试、15 项真机测试通过。BV / 【淘宝】剪贴板文字可自动预填首页条目，保存前不入库，并保留既有功能。已覆盖安装到 Android 13 手机。详情见 [CLIPBOARD-IMPORT.md](CLIPBOARD-IMPORT.md)。Content/Action v2 和位置选择记录见 [CONTENT-ACTION-V2.md](CONTENT-ACTION-V2.md)。以下保留首次 MVP 交付的历史记录。
 
 验证日期：2026-09-07（Asia/Shanghai）。

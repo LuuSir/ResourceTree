@@ -35,7 +35,8 @@ fun EditorScreen(vm: EditorViewModel, editing: Boolean, fromClipboard: Boolean =
         if (uri != null) { dirty = true; vm.selectMedia(uri) }
     }
     val needsApp = state.type == NodeType.ITEM && state.actionType in listOf(ActionType.LAUNCH_APP, ActionType.COPY_AND_LAUNCH, ActionType.SHARE)
-    LaunchedEffect(needsApp, state.loading) { if (needsApp && !state.loading) vm.loadApps() }
+    LaunchedEffect(needsApp, state.loading, state.target) { if (needsApp && !state.loading) vm.loadTarget() }
+    LaunchedEffect(chooseApp) { if (chooseApp) vm.loadApps() }
     val back = { if (dirty && !state.saved) discard = true else onBack() }
     BackHandler(enabled = !state.saved) { if (!working) back() }
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
@@ -77,12 +78,12 @@ fun EditorScreen(vm: EditorViewModel, editing: Boolean, fromClipboard: Boolean =
                     }
                 }
                 if (needsApp) {
-                    val app = state.apps.find { it.packageName == state.target }
+                    val app = state.apps.find { it.packageName == state.target } ?: state.targetApp?.takeIf { it.packageName == state.target }
                     Text(if (state.actionType == ActionType.SHARE) "目标应用（可选）" else "目标应用 *", style = MaterialTheme.typography.titleSmall)
                     OutlinedCard(onClick = { vm.loadApps(); chooseApp = true }, enabled = !working, modifier = Modifier.fillMaxWidth()) {
                         ListItem(leadingContent = { ApplicationIcon(app) },
-                            headlineContent = { Text(app?.name ?: if (state.target.isBlank()) { if (state.actionType == ActionType.SHARE) "系统分享面板" else "选择应用" } else if (state.appsLoading) "正在读取应用信息…" else "原目标应用当前不可用") },
-                            supportingContent = { Text(if (state.target.isBlank()) "从已安装应用中选择或搜索" else "点击更换应用") })
+                            headlineContent = { Text(app?.name ?: if (state.target.isBlank()) { if (state.actionType == ActionType.SHARE) "系统分享面板" else "选择应用" } else if (state.targetLoading) "正在读取应用信息…" else state.target) },
+                            supportingContent = { Text(if (state.target.isBlank()) "从已安装应用中选择或搜索" else "已设置目标 · 点击更换应用") })
                     }
                     if (state.actionType == ActionType.SHARE && state.target.isNotBlank()) {
                         TextButton(enabled = !working, onClick = { dirty = true; vm.change { it.copy(target = "") } }) { Text("改用系统分享面板") }

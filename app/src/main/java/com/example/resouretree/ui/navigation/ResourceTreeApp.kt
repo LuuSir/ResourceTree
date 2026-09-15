@@ -28,20 +28,23 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
         BrowserViewModel(app.repository, app.documents, app.executor, createSavedStateHandle())
     } })
     val pending by app.clipboardDrafts.pending.collectAsStateWithLifecycle()
+    val rules by app.clipboardRules.rules.collectAsStateWithLifecycle()
     val current by nav.currentBackStackEntryAsState()
-    LaunchedEffect(pending?.token, current?.destination?.route) {
-        val draft = pending ?: return@LaunchedEffect
+    LaunchedEffect(pending?.token, current?.destination?.route, rules) {
+        val offered = pending ?: return@LaunchedEffect
         if (current?.destination?.route != "browser") return@LaunchedEffect
-        val packages = try { app.appCatalog.load().map { it.packageName }.toSet() }
+        val draft = com.example.resouretree.domain.model.ClipboardDraftParser.parse(offered.text, offered.token, rules)
+            ?: run { app.clipboardDrafts.clearPending(); return@LaunchedEffect }
+        val target = try { app.appCatalog.resolveTarget(draft.targets) }
             catch (e: CancellationException) { throw e }
-            catch (_: Exception) { emptySet() }
+            catch (_: Exception) { draft.targets.first() }
         withContext(Dispatchers.Main.immediate) {
             if (nav.currentBackStackEntry?.destination?.route != "browser" || app.clipboardDrafts.pending.value?.token != draft.token) return@withContext
             // Keep clipboard text out of navigation URLs; the existing editor owns the editable form.
             browser.open(null)
             nav.navigate("editor?type=ITEM&parent=")
             nav.currentBackStackEntry!!.savedStateHandle.apply {
-                set("clipboardName", draft.name); set("clipboardText", draft.text); set("clipboardTarget", draft.target(packages))
+                set("clipboardName", draft.name); set("clipboardText", draft.text); set("clipboardTarget", target)
             }
             app.clipboardDrafts.consumed(draft.token)
         }
@@ -50,7 +53,11 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
         composable("browser") {
             BrowserScreen(browser,
                 onCreate = { type, parent -> nav.navigate("editor?type=${type.name}&parent=${Uri.encode(parent.orEmpty())}") },
-                onEdit = { node -> nav.navigate("editor?id=${Uri.encode(node.id)}&type=${node.type.name}") })
+                onEdit = { node -> nav.navigate("editor?id=${Uri.encode(node.id)}&type=${node.type.name}") },
+                onClipboardRules = { nav.navigate("clipboard-rules") })
+        }
+        composable("clipboard-rules") {
+            ClipboardRulesScreen(app.clipboardRules, onBack = { nav.popBackStack() })
         }
         composable("editor?id={id}&type={type}&parent={parent}", arguments = listOf(
             navArgument("id") { type = NavType.StringType; defaultValue = "" },

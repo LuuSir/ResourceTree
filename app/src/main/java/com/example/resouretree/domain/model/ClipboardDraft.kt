@@ -5,13 +5,9 @@ data class ClipboardDraft(val token: String, val name: String, val text: String,
 }
 
 object ClipboardDraftParser {
-    fun parse(text: String, token: String): ClipboardDraft? {
+    fun parse(text: String, token: String, rules: List<ClipboardRule> = ClipboardRule.defaults): ClipboardDraft? {
         val prefix = text.trimStart()
-        return when {
-            prefix.startsWith("BV") -> ClipboardDraft(token, prefix.lineSequence().first().take(80), text,
-                listOf("tv.danmaku.bili", "com.bilibili.app.in"))
-            prefix.startsWith("【淘宝】") -> ClipboardDraft(token, "淘宝分享", text, listOf("com.taobao.taobao"))
-            else -> null
-        }
+        val rule = rules.filter { it.enabled && prefix.startsWith(it.prefix) }.maxByOrNull { it.prefix.length } ?: return null
+        return ClipboardDraft(token, rule.name.ifBlank { prefix.lineSequence().first().take(80) }, text, rule.targets)
     }
 }
