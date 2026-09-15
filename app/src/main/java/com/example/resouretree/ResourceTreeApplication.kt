@@ -14,6 +14,7 @@ class ResourceTreeApplication : Application() {
     val repository by lazy { NodeRepository(database) }
     val documents by lazy { DocumentStore(contentResolver, java.io.File(filesDir, "media")) }
     val appCatalog by lazy { AndroidAppCatalog(this) }
-    val clipboardDrafts by lazy { com.example.resouretree.data.clipboard.ClipboardDraftInbox(this) }
+    val clipboardRules by lazy { com.example.resouretree.data.clipboard.ClipboardRuleStore(this) }
+    val clipboardDrafts by lazy { com.example.resouretree.data.clipboard.ClipboardDraftInbox(this, clipboardRules) }
     val executor by lazy { ActionExecutor(AndroidClipboardWriter(this), AndroidPackageLauncher(this), AndroidContentSharer(this)) }
 }

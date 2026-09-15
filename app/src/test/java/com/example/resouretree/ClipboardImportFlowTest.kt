@@ -61,4 +61,26 @@ class ClipboardImportFlowTest {
         assertNull(saved.parentId); assertEquals(text, saved.content.text)
         assertEquals(ResourceAction(ActionType.COPY_AND_LAUNCH, "com.taobao.taobao"), saved.action)
     }
+
+    @Test fun changedRulesApplyToPendingClipboardAfterLeavingRuleEditor() {
+        waitFor("哔哩哔哩")
+        compose.onNodeWithText("菜单").performClick()
+        compose.onNodeWithText("剪贴板规则").performClick()
+        compose.onNodeWithTag("rule-edit-bilibili").performClick()
+        compose.onNodeWithText("默认名称（可选）").performTextReplacement("自定预填")
+        compose.onNodeWithText("目标包名 / 候选包名 *").performTextReplacement("com.test.direct")
+        compose.runOnIdle { app.clipboardDrafts.offer(ClipData.newPlainText("外部应用", "BV_RULE_EDIT")) }
+        compose.onNodeWithText("编辑剪贴板规则").assertExists()
+        compose.onNodeWithText("新建条目").assertDoesNotExist()
+        compose.onNodeWithText("保存规则").performClick()
+        compose.onNodeWithText("返回").performClick()
+        waitFor("新建条目")
+        compose.onNodeWithText("名称 *").assertTextContains("自定预填")
+        compose.onNodeWithText("保存", substring = false).performClick()
+        waitFor("自定预填")
+        val saved = runBlocking { app.repository.all.first().single { it.name == "自定预填" } }
+        assertEquals("com.test.direct", saved.action.target)
+        assertEquals("BV_RULE_EDIT", saved.content.text)
+        assertNull(saved.parentId)
+    }
 }
