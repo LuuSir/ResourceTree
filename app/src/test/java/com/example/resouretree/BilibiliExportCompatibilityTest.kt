@@ -13,17 +13,16 @@ class BilibiliExportCompatibilityTest {
         val sample = File("../tools/bilibili-export/samples/resourcetree-bilibili.single.sample.json")
         val codec = TreeJson()
         val dto = codec.decode(sample.readText(Charsets.UTF_8))
-        assertEquals(1, dto.schemaVersion)
+        assertEquals(2, dto.schemaVersion)
         assertEquals("哔哩哔哩", dto.roots.single().name)
         assertEquals("生产力", dto.roots.single().children.single().name)
         val nodes = codec.toNodes(dto)
         assertEquals(3, nodes.size)
         val item = nodes.single { it.type == NodeType.ITEM }
         assertEquals("示例视频 A", item.name)
-        assertEquals("BVExample1", item.content)
+        assertEquals("BVExample1", item.content.text)
         assertEquals(ActionType.COPY_AND_LAUNCH, item.action.type)
-        assertEquals(item.content, item.action.text)
-        assertEquals("tv.danmaku.bili", item.action.packageName)
+        assertEquals("tv.danmaku.bili", item.action.target)
         assertEquals(dto, codec.decode(codec.encode(dto)))
     }
 
@@ -32,7 +31,7 @@ class BilibiliExportCompatibilityTest {
         val sample = File("../tools/bilibili-export/samples/resourcetree-bilibili.sample.json")
         val codec = TreeJson()
         val dto = codec.decode(sample.readText(Charsets.UTF_8))
-        assertEquals(1, dto.schemaVersion)
+        assertEquals(2, dto.schemaVersion)
         assertEquals("哔哩哔哩", dto.roots.single().name)
         assertEquals(listOf("生产力", "生命力"), dto.roots.single().children.map { it.name })
         val nodes = codec.toNodes(dto)
@@ -40,11 +39,10 @@ class BilibiliExportCompatibilityTest {
         val items = nodes.filter { it.type == NodeType.ITEM }
         assertEquals(3, items.size)
         assertEquals(listOf("示例视频 A", "示例视频 B", "示例视频 C"), items.map { it.name })
-        assertEquals(listOf("BVExample1", "BVExample2", "BVExample3"), items.map { it.content })
+        assertEquals(listOf("BVExample1", "BVExample2", "BVExample3"), items.map { it.content.text })
         items.forEach {
             assertEquals(ActionType.COPY_AND_LAUNCH, it.action.type)
-            assertEquals(it.content, it.action.text)
-            assertEquals("tv.danmaku.bili", it.action.packageName)
+            assertEquals("tv.danmaku.bili", it.action.target)
             assertTrue(it.tags.isEmpty())
         }
         assertEquals(nodes.size, nodes.map { it.id }.toSet().size)

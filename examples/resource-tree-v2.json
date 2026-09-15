@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "roots": [
+    {
+      "type": "folder",
+      "name": "哔哩哔哩",
+      "children": [
+        {
+          "type": "item",
+          "name": "B站文字示例",
+          "content": { "type": "TEXT", "text": "BV1meMS6rE6Z" },
+          "tags": ["示例"],
+          "action": { "type": "COPY_AND_LAUNCH", "target": "com.bilibili.app.in" }
+        },
+        {
+          "type": "item",
+          "name": "分享文字示例",
+          "content": { "type": "TEXT", "text": "ResourceTree" },
+          "action": { "type": "SHARE", "target": "" }
+        }
+      ]
+    }
+  ]
+}

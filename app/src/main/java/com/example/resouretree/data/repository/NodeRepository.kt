@@ -23,8 +23,8 @@ class NodeRepository(private val database: ResourceDatabase, private val codec: 
                 val folder = ResourceNode(UUID.randomUUID().toString(), null, NodeType.FOLDER, "哔哩哔哩")
                 val example = ResourceNode(UUID.randomUUID().toString(), folder.id, NodeType.FOLDER, "示例")
                 val item = ResourceNode(UUID.randomUUID().toString(), example.id, NodeType.ITEM, "Bilibili 示例",
-                    content = "BV1Futr6xEkb", tags = listOf("示例", "三国"),
-                    action = ResourceAction(ActionType.COPY_AND_LAUNCH, "BV1Futr6xEkb", "tv.danmaku.bili"))
+                    content = ResourceContent(text = "BV1Futr6xEkb"), tags = listOf("示例", "三国"),
+                    action = ResourceAction(ActionType.COPY_AND_LAUNCH, "tv.danmaku.bili"))
                 dao.insertNodes(listOf(folder, example, item).map { it.toEntity() })
             }
             dao.setMetadata(MetadataEntity("demo_initialized", "true"))

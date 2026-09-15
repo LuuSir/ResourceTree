@@ -4,11 +4,11 @@ import com.example.resouretree.domain.model.*
 import kotlinx.serialization.json.*
 import java.util.UUID
 
-data class ExportFileDto(val schemaVersion: Int = 1, val roots: List<ExportNodeDto>)
-data class ExportActionDto(val type: String, val text: String, val packageName: String)
+data class ExportFileDto(val schemaVersion: Int = 2, val roots: List<ExportNodeDto>)
+data class ExportActionDto(val type: String, val target: String)
 data class ExportNodeDto(
     val id: String?, val type: String, val name: String, val sortOrder: Int,
-    val createdAt: Long, val updatedAt: Long, val content: String = "",
+    val createdAt: Long, val updatedAt: Long, val content: ResourceContent = ResourceContent(),
     val tags: List<String> = emptyList(), val action: ExportActionDto? = null,
     val children: List<ExportNodeDto> = emptyList(), val isPinned: Boolean = false
 )
@@ -24,7 +24,7 @@ class TreeJson {
         fun branch(node: ResourceNode): ExportNodeDto = ExportNodeDto(
             node.id, node.type.name.lowercase(), node.name, node.sortOrder, node.createdAt, node.updatedAt,
             node.content, node.tags, if (node.type == NodeType.ITEM) ExportActionDto(
-                node.action.type.name, node.action.text, node.action.packageName) else null,
+                node.action.type.name, node.action.target) else null,
             groups[node.id].orEmpty().sortedWith(Tree.order).map { branch(it) }, node.isPinned
         )
         return ExportFileDto(roots = groups[null].orEmpty().sortedWith(Tree.order).map { branch(it) })
@@ -38,10 +38,14 @@ class TreeJson {
             put("isPinned", node.isPinned)
             if (node.type == "folder") put("children", JsonArray(node.children.map { branch(it) }))
             else {
-                put("content", node.content)
+                put("content", buildJsonObject {
+                    put("type", node.content.type.name)
+                    if (node.content.type == ContentType.TEXT) put("text", node.content.text)
+                    else { put("path", node.content.path); put("mimeType", node.content.mimeType) }
+                })
                 put("tags", JsonArray(node.tags.map(::JsonPrimitive)))
                 node.action?.let { a -> put("action", buildJsonObject {
-                    put("type", a.type); put("text", a.text); put("packageName", a.packageName)
+                    put("type", a.type); put("target", a.target)
                 }) }
             }
         }
@@ -69,8 +73,8 @@ class TreeJson {
         requireNotNull(root) { "JSON 顶层必须是对象" }
         val version = (root["schemaVersion"] as? JsonPrimitive)?.takeUnless { it.isString }?.intOrNull
             ?: throw IllegalArgumentException("缺少或无效的 schemaVersion")
-        require(version <= 1) { "该文件来自更新版本的 ResourceTree，当前版本无法导入。" }
-        require(version == 1) { "不支持的 schemaVersion：$version" }
+        require(version <= 2) { "该文件来自更新版本的 ResourceTree，当前版本无法导入。" }
+        require(version in 1..2) { "不支持的 schemaVersion：$version" }
         var count = 0
         val now = System.currentTimeMillis()
         fun branch(element: JsonElement, level: Int, position: Int): ExportNodeDto {
@@ -87,15 +91,34 @@ class TreeJson {
                 require(it is JsonPrimitive && it.isString) { "tags 必须为字符串数组：$name" }
                 it.content
             }
-            val content = obj.string("content")
-            val action = obj["action"]?.takeUnless { it == JsonNull }?.let {
-                require(it is JsonObject) { "action 必须为对象：$name" }
+            val actionObject = obj["action"]?.takeUnless { it == JsonNull }?.let {
+                require(it is JsonObject) { "action 必须为对象：$name" }; it
+            }
+            // All legacy fields are consumed here; the returned DTO always has v2 semantics.
+            val content = if (version == 1) {
+                val legacy = obj.string("content")
+                ResourceContent(text = legacy.ifEmpty { actionObject?.string("text").orEmpty() })
+            } else if (type == "folder") ResourceContent() else {
+                val c = obj["content"] as? JsonObject ?: throw IllegalArgumentException("content 必须为对象：$name")
+                val kind = c.string("type", required = true)
+                val contentType = ContentType.entries.firstOrNull { it.name == kind }
+                    ?: throw IllegalArgumentException("不支持的内容类型：$kind")
+                if (contentType == ContentType.TEXT) ResourceContent(text = c.string("text"))
+                else {
+                    val path = c.string("path", required = true)
+                    val mime = c.string("mimeType", required = true)
+                    require(path.isNotBlank()) { "媒体内容缺少 path：$name" }
+                    require(validMime(contentType, mime)) { "媒体 MIME 类型不正确：$name" }
+                    ResourceContent(contentType, path = path, mimeType = mime)
+                }
+            }
+            val action = actionObject?.let {
                 val actionType = it.string("type", required = true)
                 require(ActionType.entries.any { a -> a.name == actionType }) { "不支持的动作：$actionType" }
-                val packageName = it.string("packageName")
+                val target = it.string(if (version == 1) "packageName" else "target")
                 if (actionType == "LAUNCH_APP" || actionType == "COPY_AND_LAUNCH")
-                    require(packageName.isNotBlank()) { "启动应用的动作缺少 packageName：$name" }
-                ExportActionDto(actionType, if (it.containsKey("text")) it.string("text") else content, packageName)
+                    require(target.isNotBlank()) { "启动应用的动作缺少 target：$name" }
+                ExportActionDto(actionType, target)
             }
             val created = obj.number("createdAt", now)
             val pinned = obj["isPinned"]?.let {
@@ -111,7 +134,7 @@ class TreeJson {
     }
 
     fun toNodes(file: ExportFileDto, existingIds: Set<String> = emptySet()): List<ResourceNode> {
-        require(file.schemaVersion == 1) { "不支持的 schemaVersion" }
+        require(file.schemaVersion == 2) { "不支持的 schemaVersion" }
         val used = existingIds.toMutableSet()
         val result = mutableListOf<ResourceNode>()
         fun branch(dto: ExportNodeDto, parentId: String?) {
@@ -122,7 +145,7 @@ class TreeJson {
             while (!used.add(id)) id = UUID.randomUUID().toString()
             result += ResourceNode(id, parentId, NodeType.valueOf(dto.type.uppercase()), dto.name,
                 dto.sortOrder, dto.createdAt, dto.updatedAt, dto.content, dto.tags,
-                dto.action?.let { ResourceAction(ActionType.valueOf(it.type), it.text, it.packageName) } ?: ResourceAction(), dto.isPinned)
+                dto.action?.let { ResourceAction(ActionType.valueOf(it.type), it.target) } ?: ResourceAction(), dto.isPinned)
             dto.children.forEach { branch(it, id) }
         }
         file.roots.forEach { branch(it, null) }

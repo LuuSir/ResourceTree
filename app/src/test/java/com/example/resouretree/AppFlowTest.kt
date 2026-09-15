@@ -26,7 +26,7 @@ class AppFlowTest {
         compose.onNodeWithText("新建条目").performClick()
         waitFor("名称 *")
         compose.onNodeWithText("名称 *").performTextInput("本地测试条目")
-        compose.onNodeWithText("内容", substring = false).performTextInput("复制测试 ABC")
+        compose.onNodeWithText("文本内容", substring = false).performTextInput("复制测试 ABC")
         compose.onNodeWithText("标签（逗号分隔）").performTextInput("测试,三国")
         compose.onNodeWithText("保存", substring = false).performClick()
         waitFor("本地测试条目")

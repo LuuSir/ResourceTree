@@ -5,7 +5,7 @@
     <queries>
         <package android:name="tv.danmaku.bili" />
         <package android:name="com.bilibili.app.in" />
-        <!-- Only launcher activities: lets user-configured packages work on Android 11–12. -->
+        <!-- Scoped application-list visibility for the app picker and launching targets. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -22,6 +22,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ResoureTree">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.media"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/media_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

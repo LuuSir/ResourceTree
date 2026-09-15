@@ -1,6 +1,6 @@
 # 验证结果
 
-最新多选/批量操作版本：构建成功，47 项本地测试和 9 项真机测试通过；已覆盖安装到 Android 13 手机。最新 APK 校验值及详细结果见 [BATCH-OPERATIONS.md](BATCH-OPERATIONS.md)。以下保留首次 MVP 交付的历史记录。
+最新剪贴板草稿版本（2026-09-15）：assembleDebug、unit tests、Android tests、lint 均已完成；73 项本地测试、15 项真机测试通过。BV / 【淘宝】剪贴板文字可自动预填首页条目，保存前不入库，并保留既有功能。已覆盖安装到 Android 13 手机。详情见 [CLIPBOARD-IMPORT.md](CLIPBOARD-IMPORT.md)。Content/Action v2 和位置选择记录见 [CONTENT-ACTION-V2.md](CONTENT-ACTION-V2.md)。以下保留首次 MVP 交付的历史记录。
 
 验证日期：2026-09-07（Asia/Shanghai）。
 

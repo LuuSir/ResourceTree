@@ -27,7 +27,8 @@ fun NodeRow(node: ResourceNode, onClick: () -> Unit, onMenu: () -> Unit,
             if (node.isPinned) Text("已置顶", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
             if (folder) Text("文件夹") else {
                 Column {
-                    if (node.content.isNotEmpty()) Text(node.content, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val preview = if (node.content.type == ContentType.TEXT) node.content.text else node.content.type.name
+                    if (preview.isNotEmpty()) Text(preview, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (node.tags.isNotEmpty()) Text(node.tags.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }

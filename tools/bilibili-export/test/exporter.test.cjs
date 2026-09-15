@@ -6,12 +6,13 @@ const { join } = require('node:path');
 const { webcrypto } = require('node:crypto');
 const { BiliApi, Exporter, convertMedia, serializeExport, selectVideos, uuid, filename, CancelledError, MAX_BYTES, MAX_NODES, gmRequest } = require('../bilibili-fav-export.user.js');
 const { folders, samplePages, video, mockApi, deterministicOptions } = require('./fixtures.cjs');
+const { validate } = require('./validate-v2.cjs');
 const response = (data, code = 0) => ({ status: 200, responseText: JSON.stringify({ code, message: 'fixture', data }) });
 const run = (pages, folder = { id: '1', title: '测试夹', mediaCount: null }, options = {}) =>
     new Exporter(mockApi({ '1': pages }), {}, () => {}, options).run([folder]);
 
 test('shipped sample is produced by the real exporter, with exact schema keys', async () => {
-    const result = await new Exporter(mockApi(samplePages), {}, () => {}, deterministicOptions()).run(folders);
+    const result = await new Exporter(mockApi(samplePages), {}, () => {}, deterministicOptions()).run(folders, 'tv.danmaku.bili');
     assert.equal(readFileSync(join(__dirname, '../samples/resourcetree-bilibili.sample.json'), 'utf8'), result.text + '\n');
     assert.deepEqual(Object.keys(result.file), ['schemaVersion', 'roots']);
     const root = result.file.roots[0];
@@ -19,7 +20,9 @@ test('shipped sample is produced by the real exporter, with exact schema keys', 
     assert.deepEqual(Object.keys(root), ['id', 'type', 'name', 'sortOrder', 'createdAt', 'updatedAt', 'children']);
     const item = root.children[0].children[0];
     assert.deepEqual(Object.keys(item), ['id', 'type', 'name', 'sortOrder', 'createdAt', 'updatedAt', 'content', 'tags', 'action']);
-    assert.deepEqual(item.action, { type: 'COPY_AND_LAUNCH', text: 'BVExample1', packageName: 'tv.danmaku.bili' });
+    assert.equal(result.file.schemaVersion, 2);
+    assert.deepEqual(item.content, { type: 'TEXT', text: 'BVExample1' });
+    assert.deepEqual(item.action, { type: 'COPY_AND_LAUNCH', target: 'tv.danmaku.bili' });
     assert.deepEqual(item.tags, []);
 });
 
@@ -52,7 +55,7 @@ test('duplicate video across folders retains independent UUIDs', async () => {
     const page = { has_more: false, medias: [video(1)] };
     const result = await new Exporter(mockApi({ '1': [page], '2': [page] }), {}).run([{ id: '1', title: '甲', mediaCount: 1 }, { id: '2', title: '乙', mediaCount: 1 }]);
     const [a, b] = result.file.roots[0].children.map(f => f.children[0]);
-    assert.equal(a.content, b.content); assert.notEqual(a.id, b.id);
+    assert.equal(a.content.text, b.content.text); assert.notEqual(a.id, b.id);
 });
 
 test('invalid resources skipped and counted; bv_id fallback and escaped titles survive', async () => {
@@ -62,13 +65,13 @@ test('invalid resources skipped and counted; bv_id fallback and escaped titles s
     ] }]);
     assert.equal(result.stats.skipped, 4); assert.equal(result.stats.items, 1);
     assert.deepEqual(result.stats.reasons, { '缺少有效 BV': 1, '非视频资源': 1, '缺少视频标题': 1, '资源结构异常': 1 });
-    assert.equal(result.file.roots[0].children[0].children[0].content, 'BVFutureLong123');
+    assert.equal(result.file.roots[0].children[0].children[0].content.text, 'BVFutureLong123');
     assert.match(result.text, /onerror/); // Data stays a JSON string, never markup.
 });
 
 test('custom target package and UUID fallback', () => {
     const item = convertMedia(video(1), 0, 1, 'com.bilibili.app.in').node;
-    assert.equal(item.action.packageName, 'com.bilibili.app.in');
+    assert.equal(item.action.target, 'com.bilibili.app.in');
     const fallback = { getRandomValues: bytes => webcrypto.getRandomValues(bytes) };
     const ids = new Set(Array.from({ length: 100 }, () => uuid(fallback)));
     assert.equal(ids.size, 100);
@@ -265,7 +268,7 @@ test('skip records bounded while all reasons counted', async () => {
 });
 
 test('single video export keeps its parent folder, action, content and no extra items', async () => {
-    const result = await new Exporter(mockApi(samplePages), {}, () => {}, deterministicOptions()).run(folders);
+    const result = await new Exporter(mockApi(samplePages), {}, () => {}, deterministicOptions()).run(folders, 'tv.danmaku.bili');
     const item = result.file.roots[0].children[0].children[0];
     const single = selectVideos(result.file, new Set([item.id]));
     assert.equal(single.roots[0].name, '哔哩哔哩');
@@ -285,4 +288,21 @@ test('video selection uses membership UUIDs rather than global BV matching', asy
     assert.equal(single.roots[0].children.length, 1);
     assert.equal(single.roots[0].children[0].name, '乙');
     assert.equal(single.roots[0].children[0].children.length, 1);
+});
+
+test('v2 exporter preserves the v1 golden tree exactly apart from the requested schema fields', async () => {
+    const before = JSON.parse(readFileSync(join(__dirname, 'baselines/resourcetree-v1.json'), 'utf8'));
+    const result = await new Exporter(mockApi(samplePages), {}, () => {}, deterministicOptions()).run(folders, 'tv.danmaku.bili');
+    const report = validate(before, result.file, 'tv.danmaku.bili');
+    assert.equal(report.items, 3);
+    assert.equal(report.foldersIncludingRoot, 3);
+});
+
+test('default v2 export targets international Bilibili and never duplicates the BV in action', async () => {
+    const result = await run([{ has_more: false, medias: [video(1, { bvid: 'BV1meMS6rE6Z' })] }]);
+    assert.equal(result.file.schemaVersion, 2);
+    const item = result.file.roots[0].children[0].children[0];
+    assert.deepEqual(item.content, { type: 'TEXT', text: 'BV1meMS6rE6Z' });
+    assert.deepEqual(item.action, { type: 'COPY_AND_LAUNCH', target: 'com.bilibili.app.in' });
+    assert.equal(JSON.stringify(item).split('BV1meMS6rE6Z').length - 1, 1);
 });

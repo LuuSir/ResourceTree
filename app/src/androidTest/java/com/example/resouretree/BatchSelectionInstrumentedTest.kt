@@ -38,8 +38,8 @@ class BatchSelectionInstrumentedTest {
         destination = ResourceNode(UUID.randomUUID().toString(), null, NodeType.FOLDER, "测试目标")
         runBlocking {
             listOf(destination,
-                ResourceNode(UUID.randomUUID().toString(), null, NodeType.ITEM, "测试甲", action = ResourceAction(ActionType.COPY, "甲")),
-                ResourceNode(UUID.randomUUID().toString(), null, NodeType.ITEM, "测试乙", action = ResourceAction(ActionType.COPY, "乙")))
+                ResourceNode(UUID.randomUUID().toString(), null, NodeType.ITEM, "测试甲", content = ResourceContent(text = "甲"), action = ResourceAction(ActionType.COPY)),
+                ResourceNode(UUID.randomUUID().toString(), null, NodeType.ITEM, "测试乙", content = ResourceContent(text = "乙"), action = ResourceAction(ActionType.COPY)))
                 .forEach { repository.save(it, true) }
         }
         compose.setContent {
@@ -69,12 +69,14 @@ class BatchSelectionInstrumentedTest {
         chooseBoth()
         compose.onNodeWithText("复制", substring = false).performClick()
         compose.onNodeWithText("复制 2 项到…").assertExists()
-        compose.onNodeWithText("首页 / 测试目标").performClick()
+        compose.onNodeWithTag("destination-folder-${destination.id}").performClick()
+        compose.onNode(hasText("复制到此处") or hasText("移动到此处")).performClick()
         waitFor("ResourceTree")
         runBlocking { assertEquals(2, repository.children(destination.id).first().size) }
         chooseBoth()
         compose.onNodeWithText("移动", substring = false).performClick()
-        compose.onNodeWithText("首页 / 测试目标").performClick()
+        compose.onNodeWithTag("destination-folder-${destination.id}").performClick()
+        compose.onNode(hasText("复制到此处") or hasText("移动到此处")).performClick()
         waitFor("ResourceTree")
         compose.waitUntil(10000) { compose.onAllNodesWithText("测试甲").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("测试目标").performClick()
@@ -89,7 +91,10 @@ class BatchSelectionInstrumentedTest {
         runBlocking { assertEquals(4, repository.children(destination.id).first().size) }
         compose.onNodeWithText("删除", substring = false).performClick()
         compose.onNode(hasText("删除") and hasAnyAncestor(isDialog())).performClick()
-        waitFor("这里还没有内容\n点击 + 创建文件夹或条目")
+        try { waitFor("这里还没有内容\n点击 + 创建文件夹或条目") }
+        catch (e: AssertionError) {
+            throw AssertionError("state=${vm.state.value}; tree=${compose.onRoot().printToString()}", e)
+        }
         runBlocking { assertTrue(repository.children(destination.id).first().isEmpty()) }
         compose.runOnIdle { assertEquals(0, executions) }
     }
@@ -104,6 +109,19 @@ class BatchSelectionInstrumentedTest {
         compose.onNodeWithText("取消", substring = false).performClick()
         waitFor("ResourceTree")
         compose.runOnIdle { assertEquals(0, executions) }
+    }
+
+    @Test fun successfulActionsStaySilentAndErrorsRemainVisible() {
+        compose.onNodeWithText("测试甲").performClick()
+        compose.runOnIdle { assertEquals(1, executions) }
+        compose.onNodeWithText("已复制", substring = false).assertDoesNotExist()
+        compose.runOnIdle {
+            vm.execute(ResourceNode("missing-app", null, NodeType.ITEM, "缺失应用",
+                action = ResourceAction(ActionType.LAUNCH_APP, target = "")))
+        }
+        compose.waitUntil(10000) {
+            compose.onAllNodesWithText("未找到目标应用", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun longPressDragsAndMorePinsWithoutExecutingAction() {
@@ -125,6 +143,7 @@ class BatchSelectionInstrumentedTest {
             up()
         }
         compose.waitUntil(10000) { runBlocking { repository.children(null).first().first().id == last.id } }
+        compose.onNodeWithText("排序已保存", substring = false).assertDoesNotExist()
         compose.onNodeWithText("多选", substring = false).assertDoesNotExist()
         compose.runOnIdle { assertEquals(0, executions) }
         compose.onNodeWithContentDescription("更多：${first.name}").performClick()

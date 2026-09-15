@@ -33,3 +33,8 @@ Thumbs.db
 
 # Exported personal data (keep checked-in examples under examples/)
 resourcetree-*.json
+
+# Private device database migration snapshots
+verification/content-v2/
+
+verification/clipboard/

@@ -16,9 +16,9 @@ class TreeAndJsonTest {
         val root = node(name = "哔哩哔哩").copy(isPinned = true)
         val folder = node(root.id, name = "生产力")
         val empty = node(root.id, name = "空目录").copy(sortOrder = 1)
-        val item = node(folder.id, NodeType.ITEM, "三国\n\"锐评\"").copy(content = "BV123",
+        val item = node(folder.id, NodeType.ITEM, "三国\n\"锐评\"").copy(content = ResourceContent(text = "BV123"),
             tags = listOf("三国", "历史", "emoji 🌲", "quote\""),
-            action = ResourceAction(ActionType.COPY_AND_LAUNCH, "独立的动作文本", "tv.danmaku.bili"))
+            action = ResourceAction(ActionType.COPY_AND_LAUNCH, "tv.danmaku.bili"))
         val source = listOf(root, folder, empty, item)
         val fromStorage = source.map { it.toEntity().toDomain() }
         val dto = codec.toDto(fromStorage)
@@ -65,20 +65,20 @@ class TreeAndJsonTest {
         val item = codec.toNodes(codec.decode("""{"schemaVersion":1,"roots":[{"type":"item","name":"无动作","tags":[]}]}""")).single()
         assertEquals(ResourceAction(), item.action); assertEquals(emptyList<String>(), item.tags)
     }
-    @Test fun missingActionTextDefaultsToContent() {
+    @Test fun v1MissingActionTextUsesContent() {
         val item = codec.toNodes(codec.decode("""{"schemaVersion":1,"roots":[{"type":"item","name":"复制","content":"文字","action":{"type":"COPY"}}]}""")).single()
-        assertEquals("文字", item.action.text)
+        assertEquals("文字", item.content.text)
     }
-    @Test fun explicitEmptyActionTextIsPreserved() {
+    @Test fun v1EmptyActionTextDoesNotOverrideContent() {
         val item = codec.toNodes(codec.decode("""{"schemaVersion":1,"roots":[{"type":"item","name":"复制","content":"文字","action":{"type":"COPY","text":""}}]}""")).single()
-        assertEquals("", item.action.text)
+        assertEquals("文字", item.content.text)
     }
     @Test fun illegalJsonIsRejected() { rejects { codec.decode("{broken") } }
     @Test fun missingRequiredFieldsAreRejected() {
         listOf("{}", """{"schemaVersion":1}""", """{"schemaVersion":1,"roots":[{"type":"item"}]}""").forEach { text -> rejects { codec.decode(text) } }
     }
     @Test fun unsupportedVersionHasClearError() {
-        assertTrue(rejects { codec.decode("""{"schemaVersion":2,"roots":[]}""") }.message.orEmpty().contains("更新版本"))
+        assertTrue(rejects { codec.decode("""{"schemaVersion":3,"roots":[]}""") }.message.orEmpty().contains("更新版本"))
         rejects { codec.decode("""{"schemaVersion":0,"roots":[]}""") }
     }
     @Test fun invalidTypesAreRejected() {
