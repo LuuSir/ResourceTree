@@ -20,11 +20,13 @@ data class NodeEntity(
     val sortOrder: Int,
     val createdAt: Long,
     val updatedAt: Long,
-    val content: String,
+    val contentType: String,
+    val contentText: String,
+    val contentPath: String,
+    val contentMimeType: String,
     val tagsJson: String,
     val actionType: String,
-    val actionText: String,
-    val packageName: String,
+    val actionTarget: String,
     @ColumnInfo(defaultValue = "0") val isPinned: Boolean = false
 )
 
@@ -38,8 +40,8 @@ object TagsCodec {
 }
 
 fun NodeEntity.toDomain() = ResourceNode(id, parentId, NodeType.valueOf(type), name, sortOrder,
-    createdAt, updatedAt, content, TagsCodec.decode(tagsJson),
-    ResourceAction(ActionType.valueOf(actionType), actionText, packageName), isPinned)
+    createdAt, updatedAt, ResourceContent(ContentType.valueOf(contentType), contentText, contentPath, contentMimeType), TagsCodec.decode(tagsJson),
+    ResourceAction(ActionType.valueOf(actionType), actionTarget), isPinned)
 
 fun ResourceNode.toEntity() = NodeEntity(id, parentId, type.name, name, sortOrder, createdAt,
-    updatedAt, content, TagsCodec.encode(tags), action.type.name, action.text, action.packageName, isPinned)
+    updatedAt, content.type.name, content.text, content.path, content.mimeType, TagsCodec.encode(tags), action.type.name, action.target, isPinned)

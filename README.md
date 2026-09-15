@@ -6,17 +6,19 @@
 
 - 首页只显示当前目录的直接子节点。点击文件夹进入，点击面包屑或返回键回到上层。
 - 点击右下角「＋ 新建」创建文件夹或条目。
-- 条目表单支持名称、内容、逗号分隔的标签、动作、目标 App package。
-- 「动作复制文本」默认跟随内容，也可独立修改，导入的独立 action.text 不会被编辑表单静默覆盖。
+- 复制以 `BV` 或 `【淘宝】` 开头的文字后回到应用，会自动打开预填的新建条目：TEXT 内容保留完整剪贴板文字，动作是「复制并打开 App」，目标分别是已安装的哔哩哔哩版本或淘宝，默认保存到首页。名称已填写，仍需点击保存才会入库。
+- 同一份剪贴板不会重复弹出；应用自身复制不会触发新建。正在编辑时暂缓打开新草稿，返回浏览页后再处理。仅在前台窗口获得焦点时读取，不进行后台监听或后台启动页面。
+- 条目表单支持名称、内容、逗号分隔的标签和动作；需要打开应用时，从带图标的已安装应用列表中选择，支持按名称或包名搜索，无需输入包名。
+- Content 支持 TEXT / IMAGE / VIDEO / FILE。TEXT 编辑文本；媒体通过系统文件选择器选择，保存私有副本及 MIME 类型。Action 仅保存 type / target，复制和分享读取当前 Content。
 - 点击条目执行动作；在目录内长按条目即可上下拖动排序，靠近列表边缘可自动滚动，松手后保存。
 - 点击「更多」可以置顶/取消置顶、编辑、多选、移动、复制、删除。
 - 「更多」→「多选」后，当前条目自动勾选；点其他行继续勾选，顶部可全选/取消全选，底部批量移动、复制、删除。
-- 置顶条目固定在普通条目前面，两组各自支持拖动排序；取消置顶后排在普通条目组前部。搜索结果和多选模式不支持拖动排序。
+- 置顶条目固定在普通条目前面，两组各自支持拖动排序；取消置顶后排在普通条目组前部。搜索结果和多选模式不支持拖动排序。拖动项在独立悬浮层跟手移动，其他行通过各自的弹簧动画让位，松手后平滑落位。
 - 多选模式中的点击只改变勾选，不会启动条目动作。返回或「取消」退出多选；搜索结果同样支持多选。
 - 复制支持文件夹及其完整子树，所有副本使用新 UUID，保留内容、标签和动作。同名副本自动添加「（副本）」「（副本 2）」等后缀；在目标目录末尾追加。
 - 批量移动/复制/删除均在单个 Room 事务中完成；同时选中祖先与后代时只处理一次子树。失败时保留选择并提示原因，数据库整批回滚。
-- 移动选择目标目录，不允许移入自身或后代。删除目录会确认并删除全部后代。
-- 「搜索」匹配所有目录中的条目名称、内容、标签；结果点击执行动作，长按管理。
+- 移动/复制使用固定宽度的位置窗口，初始位置为当前目录，面包屑可跳回任意上级；只列直接子文件夹，进入后点「移动到此处／复制到此处」确认。移动不允许移入自身或后代。删除目录会确认并删除全部后代。
+- 「搜索」匹配所有目录中的条目名称、内容、标签；结果点击执行动作，通过「更多」管理。
 - 「菜单 → 导出 JSON」通过系统文件选择器选择保存位置，导出整个数据库。
 - 「菜单 → 导入 JSON」选择文件，完整校验后追加到首页，不覆盖现有节点。失败不会留下半棵树。
 - 示例数据只初始化一次；清空后重启也不会重新生成。
@@ -42,10 +44,10 @@
 
 ## 数据库与分层
 
-Room 数据库 `resource-tree.db`，版本 2（从版本 1 原地迁移，保留已有资源）：
+Room 数据库 `resource-tree.db`，版本 3（支持 1 → 2 → 3 和 2 → 3 无损迁移，保留已有资源）：
 
-- `nodes`：UUID 主键，parentId、type、name、sortOrder、isPinned、createdAt、updatedAt、content、tagsJson、actionType、actionText、packageName。
-- 新增 isPinned 默认 false，迁移只增加这一列。DAO 和界面均按置顶优先、sortOrder 顺序读取。
+- `nodes`：UUID 主键，parentId、type、name、sortOrder、isPinned、createdAt、updatedAt、contentType、contentText、contentPath、contentMimeType、tagsJson、actionType、actionTarget。
+- 1 → 2 增加 isPinned，2 → 3 在同一事务内快照、重建节点表并恢复数据，删除旧动作文本副本字段。DAO 和界面继续按置顶优先、sortOrder 顺序读取。
 - `parentId` 为 null 表示根节点。父节点外键引用 `nodes.id`，有索引和 `ON DELETE CASCADE`。
 - Repository 校验父节点必须是 Folder，禁止循环、孤儿和超深目录。
 - `metadata`：保存 `demo_initialized` 标志。初始化和标志写入在同一事务中完成。
@@ -54,9 +56,9 @@ Room 数据库 `resource-tree.db`，版本 2（从版本 1 原地迁移，保留
 - ViewModel 不持有 Context；文件读写委托 DocumentStore，动作委托 ActionExecutor。
 - 浏览位置、搜索词、编辑表单通过 SavedStateHandle 恢复。
 
-Room 自动生成的结构快照位于 `app/schemas/com.example.resouretree.data.local.database.ResourceDatabase/`，保留版本 1 和版本 2。
+Room 自动生成的结构快照位于 `app/schemas/com.example.resouretree.data.local.database.ResourceDatabase/`，保留版本 1、2、3。
 
-## JSON v1
+## JSON v2 与 v1 兼容
 
 完整可导入示例：[`examples/resource-tree-v1.json`](examples/resource-tree-v1.json)。
 
@@ -69,17 +71,17 @@ Room 自动生成的结构快照位于 `app/schemas/com.example.resouretree.data
     └── 给自己的一句话
 ```
 
-- 顶层必须有 `schemaVersion: 1` 和数组 `roots`。
+- 新导出统一使用 `schemaVersion: 2` 和数组 `roots`；继续接受 schemaVersion 1 的旧 B站导出文件。
 - 每个节点要求 `type`（`folder` / `item`）与非空 `name`。
 - Folder 用 `children` 递归表达层级，缺省时为空目录；Item 不可有非空 children。
 - Item 保存通用 `content`、字符串数组 `tags`、`action`。
-- Action 有 `type`、`text`、`packageName`；缺少整个 action 时默认为 NONE。
-- Action 缺少 text 时默认使用 content；显式空字符串仍保持为空。
-- COPY_AND_LAUNCH / LAUNCH_APP 要求非空 packageName。
-- 合法 UUID 且无冲突时保留；缺失、非 UUID、重复、与已有数据库冲突时生成新 UUID。所有子节点绑定本次实际生成的父 ID。
+- Content 是对象：TEXT 用 type/text；IMAGE、VIDEO、FILE 用 type/path/mimeType。Action 只有 type/target；缺少整个 action 时默认为 NONE。
+- v1 的 content 包装为 TEXT，packageName 映射到 target；旧 action.text 通常忽略，仅旧 content 为空时用作 fallback。
+- COPY_AND_LAUNCH / LAUNCH_APP 要求非空 target；SHARE 的 target 可为空，表示系统分享面板。
+- 同名根目录追加为独立的同名目录，不合并、不覆盖旧树。合法 UUID 且无冲突时保留；缺失、非 UUID、重复、与已有数据库冲突时生成新 UUID。所有子节点绑定本次实际生成的父 ID。
 - 可选 `sortOrder`、`createdAt`、`updatedAt`；省略时分别使用数组位置、导入时间、createdAt。
-- 可选 `isPinned` 布尔值保存置顶状态，省略时为 false；仍使用兼容的 schemaVersion 1。
-- 导出包含排序与时间信息；采用独立 Export DTO，不序列化 Room Entity。
+- 可选 `isPinned` 布尔值保存置顶状态，省略时为 false；v1/v2 均保留这一字段。
+- 导出包含排序与时间信息；采用独立 Export DTO，不序列化 Room Entity。媒体 JSON 保存引用及 MIME，不内嵌文件字节，跨设备导入后可能需要重新选择文件。
 - 导入限制为单文件 10 MB、10000 个节点、100 层目录；文件先全部解析和校验，再在 Room 事务中整体写入。
 - 更高 schemaVersion 显示需要更新应用；未知节点/动作类型和不正确字段类型均明确报错，不默默丢弃数据。
 
@@ -90,16 +92,17 @@ Item click → BrowserViewModel → ActionExecutor
                                ├─ NONE：无副作用
                                ├─ COPY：ClipboardWriter
                                ├─ LAUNCH_APP：PackageLauncher
-                               └─ COPY_AND_LAUNCH：先 ClipboardWriter，再 PackageLauncher
+                               ├─ COPY_AND_LAUNCH：先 ClipboardWriter，再 PackageLauncher
+                               └─ SHARE：Content → ACTION_SEND → target / 系统分享面板
 ```
 
-ActionExecutor 通过接口隔离系统 API，未来添加 DEEPLINK / INTENT / OPEN_URL / SHARE 时无需将逻辑写入 Composable。
+ActionExecutor 通过接口隔离系统 API，未来添加 DEEPLINK / INTENT / OPEN_URL 时无需将逻辑写入 Composable。
 
 启动器先用 PackageManager.getLaunchIntentForPackage；无结果时 Android 13+ 尝试 getLaunchIntentSenderForPackage。未安装、无法启动或系统拒绝均返回错误结果，由 Snackbar 提示；复制成功不会因启动失败而撤回。
 
-Manifest 无 INTERNET、存储权限、QUERY_ALL_PACKAGES 或 Accessibility 权限。`queries` 包含两个示例包及 MAIN/LAUNCHER intent；后者让 Android 11–12 能发现用户填写的其他可启动应用。它不请求读取全部软件包的权限。
+Manifest 无 INTERNET、存储权限、QUERY_ALL_PACKAGES 或 Accessibility 权限。`queries` 包含两个示例包及 MAIN/LAUNCHER intent；后者声明应用选择器所需的可启动应用可见性，支持 Android 11 及以上查询应用名称、图标与启动目标。标准 Android 不提供单独的运行时「读取应用列表」权限弹窗；若厂商系统另行询问，允许后可在选择器中刷新。无需 QUERY_ALL_PACKAGES。应用列表只在本机加载、搜索，不上传。媒体分享通过仅开放 files/media 的 FileProvider 或可读 content URI，设置 EXTRA_STREAM、ClipData 和临时只读授权，不发送 file://。
 
-应用不读取后台剪贴板，不联网，不自动同步。目标 App 是否读取并识别已复制文本由目标 App 决定。
+排序、置顶、复制、移动、删除、导入导出以及动作执行成功后不再显示应用内 Snackbar；操作失败仍显示原因。系统自带的剪贴板反馈不由本应用控制。应用不读取后台剪贴板，不联网，不自动同步。目标 App 是否读取并识别已复制文本由目标 App 决定。
 
 ## 文件导航
 
@@ -145,7 +148,10 @@ $env:GRADLE_USER_HOME = 'D:\Android\GradleCache'
 - RoomRepositoryTest：Robolectric Android 35 环境下验证真实 Room/SQLite 初始化、CRUD、搜索、移动、外键、删除及导入回滚。
 - AppFlowTest：Robolectric + Compose 测试启动应用，浏览、新建、复制、搜索、编辑和删除。
 - RepositoryInstrumentedTest：设备侧 Room 测试，已配置独立 instrumentation APK。
-- BatchSelectionInstrumentedTest：使用临时内存数据库，在真机验证长按多选、全选、批量复制/移动/删除、删除取消及勾选不执行动作，不改动用户资源。
+- BatchSelectionInstrumentedTest：使用临时内存数据库，在真机验证长按拖动、置顶、「更多」多选、全选、批量复制/移动/删除、删除取消及勾选不执行动作，不改动用户资源。
+
+- AppPickerTest / AppPickerInstrumentedTest：搜索、空结果、错误重试，以及真机读取应用图标、选择并保存启动目标。
+- ReorderGestureTest：实际长按手势、独立悬浮层、两行在弹簧动画中途的位置以及最终顺序。
 
 实际验证结果见 [`BUILD-RESULTS.md`](BUILD-RESULTS.md)。
 

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.resouretree.domain.model.*
 import com.example.resouretree.ui.components.ReorderableNodeList
+import com.example.resouretree.ui.components.DestinationPicker
 import com.example.resouretree.ui.viewmodel.BrowserViewModel
 
 private data class TransferRequest(val ids: Set<String>, val copy: Boolean)
@@ -142,21 +143,11 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
         val excluded = remember(state.all, request) {
             if (request.copy) emptySet() else request.ids.flatMap { Tree.descendants(state.all, it) }.toSet()
         }
-        val folders = state.all.filter { it.type == NodeType.FOLDER && it.id !in excluded }
         val destination: (String?) -> Unit = { parent ->
             transfer = null; vm.transferMany(request.ids, parent, request.copy, clearSelection)
         }
-        AlertDialog(onDismissRequest = { transfer = null }, title = { Text("${if (request.copy) "复制" else "移动"} ${request.ids.size} 项到…") }, text = {
-            LazyColumn(Modifier.heightIn(max = 350.dp)) {
-                if (request.copy) item { Text("文件夹将连同全部子节点复制；同名时自动添加“副本”。") }
-                item { TextButton(enabled = !state.busy, onClick = { destination(null) }) { Text("首页") } }
-                items(folders, key = { it.id }) { folder ->
-                    TextButton(enabled = !state.busy, onClick = { destination(folder.id) }) {
-                        Text("首页 / " + Tree.breadcrumb(state.all, folder.id).joinToString(" / ") { it.name })
-                    }
-                }
-            }
-        }, confirmButton = { TextButton(onClick = { transfer = null }) { Text("取消") } })
+        DestinationPicker(state.all, state.currentId, excluded, request.copy, request.ids.size, state.busy,
+            onSelect = destination, onDismiss = { transfer = null })
     }
     if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.1") },
         text = { Text("本地树状快捷资源管理器\n\n所有资源保存在设备上。导入会追加到首页，不覆盖已有内容。\n\n复制后将打开指定应用；目标应用是否识别剪贴板由该应用决定。") },

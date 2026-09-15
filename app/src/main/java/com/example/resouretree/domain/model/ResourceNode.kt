@@ -1,12 +1,24 @@
 package com.example.resouretree.domain.model
 
 enum class NodeType { FOLDER, ITEM }
-enum class ActionType { NONE, COPY, LAUNCH_APP, COPY_AND_LAUNCH }
+enum class ActionType { NONE, COPY, LAUNCH_APP, COPY_AND_LAUNCH, SHARE }
+enum class ContentType { TEXT, IMAGE, VIDEO, FILE }
+
+data class ResourceContent(
+    val type: ContentType = ContentType.TEXT,
+    val text: String = "",
+    val path: String = "",
+    val mimeType: String = ""
+)
+
+fun validMime(type: ContentType, mime: String): Boolean =
+    Regex("[A-Za-z0-9!#$&^_.+\\-]+/[A-Za-z0-9!#$&^_.+\\-]+").matches(mime) &&
+        (type != ContentType.IMAGE || mime.startsWith("image/")) &&
+        (type != ContentType.VIDEO || mime.startsWith("video/"))
 
 data class ResourceAction(
     val type: ActionType = ActionType.NONE,
-    val text: String = "",
-    val packageName: String = ""
+    val target: String = ""
 )
 
 data class ResourceNode(
@@ -17,7 +29,7 @@ data class ResourceNode(
     val sortOrder: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = createdAt,
-    val content: String = "",
+    val content: ResourceContent = ResourceContent(),
     val tags: List<String> = emptyList(),
     val action: ResourceAction = ResourceAction(),
     val isPinned: Boolean = false

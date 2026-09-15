@@ -1,0 +1,12 @@
+{
+  "input": "D:\\Android\\Projects\\ResoureTree\\resourcetree-bilibili-2026-09-07.json",
+  "output": "D:\\Android\\Projects\\ResoureTree\\tools\\bilibili-export\\samples\\resourcetree-bilibili.v2.actual.json",
+  "schemaVersion": 2,
+  "foldersIncludingRoot": 22,
+  "items": 848,
+  "uniqueBvs": 837,
+  "treeAndAllOtherFieldsUnchanged": true,
+  "bvMembershipAndOrderUnchanged": true,
+  "legacyActionFields": 0,
+  "target": "com.bilibili.app.in"
+}

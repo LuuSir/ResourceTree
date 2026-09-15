@@ -25,6 +25,22 @@ class RoomRepositoryTest {
         repository = NodeRepository(db)
     }
     @After fun close() { db.close() }
+    @Test fun v1AndV2ImportsWithSameRootNameAppendIndependentTreesWithoutOverwriting() = runTest {
+        val root = ResourceNode(UUID.randomUUID().toString(), null, NodeType.FOLDER, "哔哩哔哩", isPinned = true)
+        val child = ResourceNode(UUID.randomUUID().toString(), root.id, NodeType.ITEM, "原条目", content = ResourceContent(text = "原内容"))
+        repository.save(root, true); repository.save(child, true)
+        val original = repository.all.first().associateBy { it.id }
+        val v2 = repository.exportJson()
+        repository.importJson("""{"schemaVersion":1,"roots":[{"id":"${root.id}","type":"folder","name":"哔哩哔哩","children":[{"id":"${child.id}","type":"item","name":"导入条目","content":"新内容"}]}]}""")
+        repository.importJson(v2)
+        val all = repository.all.first()
+        assertEquals(6, all.size)
+        val roots = all.filter { it.parentId == null }
+        assertEquals(3, roots.size); assertTrue(roots.all { it.name == "哔哩哔哩" })
+        assertEquals(6, all.map { it.id }.toSet().size)
+        original.forEach { (id, old) -> assertEquals(old, all.single { it.id == id }) }
+        roots.forEach { importedRoot -> assertEquals(1, all.count { it.parentId == importedRoot.id }) }
+    }
     @Test fun initializationIsOnceEvenAfterAllNodesDeleted() = runTest {
         repository.initialize(); val initial = repository.all.first()
         assertEquals(3, initial.size)
@@ -71,7 +87,7 @@ class RoomRepositoryTest {
     @Test fun createEditMoveAndSearchStayConsistent() = runTest {
         val folder = ResourceNode(UUID.randomUUID().toString(), null, NodeType.FOLDER, "目录")
         repository.save(folder, true)
-        val item = ResourceNode(UUID.randomUUID().toString(), folder.id, NodeType.ITEM, "条目", content = "ABC123", tags = listOf("三国"))
+        val item = ResourceNode(UUID.randomUUID().toString(), folder.id, NodeType.ITEM, "条目", content = ResourceContent(text = "ABC123"), tags = listOf("三国"))
         repository.save(item, true)
         assertEquals(listOf(item.id), repository.children(folder.id).first().map { it.id })
         assertEquals(1, repository.search("三国").first().size)
@@ -217,11 +233,11 @@ class RoomRepositoryTest {
             old.version = 1
         }
         val migrated = Room.databaseBuilder(context, ResourceDatabase::class.java, fileName)
-            .addMigrations(ResourceDatabase.MIGRATION_1_2).build()
+            .addMigrations(ResourceDatabase.MIGRATION_1_2, ResourceDatabase.MIGRATION_2_3).build()
         try {
             val record = requireNotNull(migrated.nodes().getNode("legacy"))
-            assertEquals("已有资源", record.name); assertEquals("旧内容", record.content)
-            assertEquals("独立动作文本", record.actionText); assertEquals(7, record.sortOrder)
+            assertEquals("已有资源", record.name); assertEquals("旧内容", record.contentText)
+            assertEquals("TEXT", record.contentType); assertEquals(7, record.sortOrder)
             assertFalse(record.isPinned)
             assertEquals("true", migrated.nodes().metadata("demo_initialized"))
         } finally { migrated.close(); context.deleteDatabase(fileName) }

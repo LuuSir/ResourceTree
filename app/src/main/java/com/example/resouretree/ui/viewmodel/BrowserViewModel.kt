@@ -61,33 +61,32 @@ class BrowserViewModel(
     fun up() { open(state.value.breadcrumb.dropLast(1).lastOrNull()?.id) }
     fun search(text: String) { savedState["searchQuery"] = text }
     fun execute(node: ResourceNode) {
-        val result = executor.execute(node.action)
-        notify(when (result) { is ActionResult.Success -> result.message; is ActionResult.Error -> result.message })
+        val result = executor.execute(node.content, node.action)
+        if (result is ActionResult.Error) notify(result.message)
     }
     fun notify(message: String) { viewModelScope.launch { messagesChannel.send(message) } }
-    private fun operation(onSuccess: () -> Unit = {}, block: suspend () -> String) {
+    private fun operation(onSuccess: () -> Unit = {}, block: suspend () -> Unit) {
         if (busy.value) return
         busy.value = true
         viewModelScope.launch {
-            try { val message = block(); onSuccess(); messagesChannel.send(message) }
+            try { block(); onSuccess() }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { messagesChannel.send(e.message ?: "操作失败，请重试") }
             finally { busy.value = false }
         }
     }
-    fun delete(node: ResourceNode) = operation { repository.delete(node.id); "已删除“${node.name}”" }
+    fun delete(node: ResourceNode) = operation { repository.delete(node.id) }
     fun setPinned(node: ResourceNode) = operation {
-        repository.setPinned(node.id, !node.isPinned); if (node.isPinned) "已取消置顶" else "已置顶"
+        repository.setPinned(node.id, !node.isPinned)
     }
-    fun reorder(parentId: String?, ids: List<String>) = operation { repository.reorder(parentId, ids); "排序已保存" }
-    fun move(node: ResourceNode, parentId: String?) = operation { repository.move(node.id, parentId); "已移动" }
+    fun reorder(parentId: String?, ids: List<String>) = operation { repository.reorder(parentId, ids) }
+    fun move(node: ResourceNode, parentId: String?) = operation { repository.move(node.id, parentId) }
     fun deleteMany(ids: Set<String>, onSuccess: () -> Unit) = operation(onSuccess) {
-        "已删除 ${repository.deleteMany(ids)} 个节点（包含子目录和条目）"
+        repository.deleteMany(ids)
     }
     fun transferMany(ids: Set<String>, parentId: String?, copy: Boolean, onSuccess: () -> Unit) = operation(onSuccess) {
-        if (copy) "已复制 ${repository.copyMany(ids, parentId)} 项（包含全部子节点）"
-        else "已移动 ${repository.moveMany(ids, parentId)} 项"
+        if (copy) repository.copyMany(ids, parentId) else repository.moveMany(ids, parentId)
     }
-    fun importDocument(uri: Uri) = operation { "已导入 ${repository.importJson(documents.read(uri))} 个节点" }
-    fun exportDocument(uri: Uri) = operation { documents.write(uri, repository.exportJson()); "JSON 已导出" }
+    fun importDocument(uri: Uri) = operation { repository.importJson(documents.read(uri)) }
+    fun exportDocument(uri: Uri) = operation { documents.write(uri, repository.exportJson()) }
 }

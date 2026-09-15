@@ -38,10 +38,23 @@ class ReorderGestureTest {
         }
         compose.mainClock.advanceTimeBy(800)
         compose.waitForIdle()
+        compose.onNodeWithTag("drag-overlay").assertExists()
+        val row1 = compose.onNodeWithTag("node-1").fetchSemanticsNode().boundsInRoot
+        val row2 = compose.onNodeWithTag("node-2").fetchSemanticsNode().boundsInRoot
+        compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("resource-list").performTouchInput {
             moveTo(Offset(40f, to), delayMillis = 600)
+        }
+        compose.mainClock.advanceTimeBy(96)
+        val moving1 = compose.onNodeWithTag("node-1").fetchSemanticsNode().boundsInRoot.top
+        val moving2 = compose.onNodeWithTag("node-2").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("First displaced row must animate through intermediate positions: $moving1", moving1 > row1.top && moving1 < row1.bottom)
+        assertTrue("Second displaced row must independently animate: $moving2", moving2 > row2.top && moving2 < row2.bottom)
+        compose.onNodeWithTag("resource-list").performTouchInput {
             up()
         }
+        compose.mainClock.autoAdvance = true
         compose.runOnIdle { assertEquals(listOf("3", "1", "2"), committed); assertEquals(0, clicks) }
+        compose.onNodeWithTag("drag-overlay").assertDoesNotExist()
     }
 }

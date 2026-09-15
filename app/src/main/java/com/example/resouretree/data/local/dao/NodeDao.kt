@@ -18,7 +18,7 @@ interface NodeDao {
     @Insert suspend fun insertNodes(nodes: List<NodeEntity>)
     @Update suspend fun updateNode(node: NodeEntity)
     @Query("DELETE FROM nodes WHERE id = :id") suspend fun deleteNode(id: String)
-    @Query("SELECT * FROM nodes WHERE type = 'ITEM' AND (instr(lower(name), lower(:query)) > 0 OR instr(lower(content), lower(:query)) > 0 OR instr(lower(tagsJson), lower(:query)) > 0) ORDER BY isPinned DESC, sortOrder, createdAt, id")
+    @Query("SELECT * FROM nodes WHERE type = 'ITEM' AND (instr(lower(name), lower(:query)) > 0 OR instr(lower(contentText), lower(:query)) > 0 OR instr(lower(tagsJson), lower(:query)) > 0) ORDER BY isPinned DESC, sortOrder, createdAt, id")
     fun searchItems(query: String): Flow<List<NodeEntity>>
     @Query("SELECT value FROM metadata WHERE `key` = :key") suspend fun metadata(key: String): String?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun setMetadata(metadata: MetadataEntity)

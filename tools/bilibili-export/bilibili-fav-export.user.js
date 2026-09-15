@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ResourceTree - Bilibili 收藏夹导出
 // @namespace    ResourceTree
-// @version      0.1.2
+// @version      0.2.0
 // @description  通过只读 API 完整分页导出自己创建的收藏夹为 ResourceTree JSON
 // @match        https://space.bilibili.com/*
 // @grant        GM_xmlhttpRequest
@@ -22,7 +22,7 @@
     const MAX_PAGES_PER_FOLDER = 10000;
     const MAX_NODES = 10000;
     const MAX_BYTES = 10 * 1024 * 1024;
-    const DEFAULT_PACKAGE = 'tv.danmaku.bili';
+    const DEFAULT_PACKAGE = 'com.bilibili.app.in';
     const LOGIN_MESSAGE = '尚未登录 Bilibili。\n请先在当前浏览器登录 Bilibili，然后重新导出。';
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -162,8 +162,8 @@
         const title = cleanText(media.title);
         if (!title) return { reason: '缺少视频标题' };
         return { node: {
-            ...baseNode('item', title, index, now, newId), content: bvid, tags: [],
-            action: { type: 'COPY_AND_LAUNCH', text: bvid, packageName },
+            ...baseNode('item', title, index, now, newId), content: { type: 'TEXT', text: bvid }, tags: [],
+            action: { type: 'COPY_AND_LAUNCH', target: packageName },
         } };
     }
     function serializeExport(file) {
@@ -286,7 +286,7 @@
                 this.stats.completed++; this.progress();
             }
             checkCancelled(this.state);
-            const file = { schemaVersion: 1, roots: [convertFolder({ title: '哔哩哔哩' }, children, 0, this.now, this.newId)] };
+            const file = { schemaVersion: 2, roots: [convertFolder({ title: '哔哩哔哩' }, children, 0, this.now, this.newId)] };
             return { file, text: serializeExport(file), stats: this.stats };
         }
     }
@@ -396,7 +396,7 @@
             });
             const all = button('全选', () => this.checkboxes.forEach(input => { input.checked = true; }));
             const none = button('全不选', () => this.checkboxes.forEach(input => { input.checked = false; }));
-            this.selection.append(all, none, element('p', '目标 App：Bilibili 国内版'));
+            this.selection.append(all, none, element('p', '默认目标 App：Bilibili 国际版'));
             const modeLabel = element('label', undefined, 'rt-export-folder');
             this.pickVideos = element('input'); this.pickVideos.type = 'checkbox';
             modeLabel.append(this.pickVideos, element('span', '先选择视频再导出（可只导出一个）'));
@@ -408,7 +408,7 @@
             const advanced = element('details'); advanced.append(element('summary', '高级：目标 package'));
             const label = element('label', '目标 package ');
             this.packageInput = element('input'); this.packageInput.type = 'text'; this.packageInput.value = DEFAULT_PACKAGE;
-            label.append(this.packageInput); advanced.append(label, element('p', '例如国际版：com.bilibili.app.in。请确认手机已安装目标 App。'));
+            label.append(this.packageInput); advanced.append(label, element('p', '国内版可改为 tv.danmaku.bili。请确认手机已安装目标 App。'));
             this.selection.append(advanced); this.content.replaceChildren(this.selection);
         }
         renderVideoPicker(result, name) {
@@ -440,12 +440,12 @@
                 for (const item of folder.children) {
                     const row = element('label', undefined, 'rt-export-folder');
                     const input = element('input'); input.type = 'checkbox';
-                    row.append(input, element('span', `${folder.name} / ${item.name} · ${item.content}`));
+                    row.append(input, element('span', `${folder.name} / ${item.name} · ${item.content.text}`));
                     input.addEventListener('change', () => {
                         if (input.checked) selectedIds.add(item.id); else selectedIds.delete(item.id);
                         updateSelection();
                     });
-                    entries.push({ row, input, id: item.id, searchText: `${folder.name} ${item.name} ${item.content}`.toLowerCase() });
+                    entries.push({ row, input, id: item.id, searchText: `${folder.name} ${item.name} ${item.content.text}`.toLowerCase() });
                     list.append(row);
                 }
             }
