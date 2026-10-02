@@ -1,5 +1,11 @@
 # 验证结果
 
+通配符规则版本（2026-10-02）：构建、99 项本地测试、19 项正式真机回归、lint 通过（0 errors）。已覆盖安装；前置快照中的 896 个节点全部保留且逐字段未变，期间新增 1 个节点，最终 897 个。规则兼容保存。详见 [CLIPBOARD-WILDCARDS.md](CLIPBOARD-WILDCARDS.md)。
+
+网页唤起 App 修复（2026-09-30）：构建、92 项本地测试、18 项正式真机回归及 lint 通过（0 errors）。用户给出的抖音短链已实测打开抖音详情页。覆盖安装前后 897 个节点及规则一致；旧的停滞诊断脚本不计入正式回归。详情见 [WEBVIEW-APP-LINKS.md](WEBVIEW-APP-LINKS.md)。
+
+网页动作版本（2026-09-30）：assembleDebug、86 项本地测试、17 项真机测试及 lint 通过（0 errors）。已覆盖安装；895 个节点、metadata 与原剪贴板规则保持一致。新增 OPEN_WEBVIEW 和规则动作选择，无目标应用。详情见 [WEBVIEW-ACTION.md](WEBVIEW-ACTION.md)。下文保留此前版本结果。
+
 最新规则配置版本（2026-09-15）：assembleDebug、unit tests、Android tests、lint 均完成；80 项本地测试、16 项真机测试通过。自动预填不再扫描应用列表，支持编辑前缀和候选包名。已覆盖安装；安装前后 Room v3 的 890 个节点与 metadata 逐行一致。详情见 [CLIPBOARD-RULES.md](CLIPBOARD-RULES.md)。下文为此前版本的验证记录。
 
 最新剪贴板草稿版本（2026-09-15）：assembleDebug、unit tests、Android tests、lint 均已完成；73 项本地测试、15 项真机测试通过。BV / 【淘宝】剪贴板文字可自动预填首页条目，保存前不入库，并保留既有功能。已覆盖安装到 Android 13 手机。详情见 [CLIPBOARD-IMPORT.md](CLIPBOARD-IMPORT.md)。Content/Action v2 和位置选择记录见 [CONTENT-ACTION-V2.md](CONTENT-ACTION-V2.md)。以下保留首次 MVP 交付的历史记录。

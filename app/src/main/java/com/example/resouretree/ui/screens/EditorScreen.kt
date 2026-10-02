@@ -20,6 +20,7 @@ import com.example.resouretree.ui.components.ApplicationIcon
 fun ActionType.label(): String = when (this) {
     ActionType.NONE -> "无动作"; ActionType.COPY -> "复制文字"
     ActionType.SHARE -> "分享"
+    ActionType.OPEN_WEBVIEW -> "应用内打开网页"
     ActionType.LAUNCH_APP -> "打开 App"; ActionType.COPY_AND_LAUNCH -> "复制并打开 App"
 }
 
@@ -71,7 +72,7 @@ fun EditorScreen(vm: EditorViewModel, editing: Boolean, fromClipboard: Boolean =
                 }
                 OutlinedTextField(state.tags, { dirty = true; vm.change { s -> s.copy(tags = it) } }, label = { Text("标签（逗号分隔）") }, modifier = Modifier.fillMaxWidth(), enabled = !working)
                 Text("点击条目时", style = MaterialTheme.typography.titleSmall)
-                ActionType.entries.filter { state.content.type == ContentType.TEXT || it !in listOf(ActionType.COPY, ActionType.COPY_AND_LAUNCH) }.forEach { action ->
+                ActionType.entries.filter { state.content.type == ContentType.TEXT || it !in listOf(ActionType.COPY, ActionType.COPY_AND_LAUNCH, ActionType.OPEN_WEBVIEW) }.forEach { action ->
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         RadioButton(selected = state.actionType == action, enabled = !working, onClick = { dirty = true; vm.change { it.copy(actionType = action) } })
                         TextButton(enabled = !working, onClick = { dirty = true; vm.change { it.copy(actionType = action) } }) { Text(action.label()) }

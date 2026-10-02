@@ -16,6 +16,30 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ClipboardImportFlowTest {
+    @Test fun webRuleHidesTargetAndSavesWebActionAfterRecreation() {
+        waitFor("哔哩哔哩")
+        compose.onNodeWithText("菜单").performClick()
+        compose.onNodeWithText("剪贴板规则").performClick()
+        compose.onNodeWithText("添加规则").performClick()
+        compose.onNodeWithText("匹配前缀 *").performTextInput("https://")
+        compose.onNodeWithText("默认名称（可选）").performTextInput("网页草稿")
+        compose.onNodeWithText("应用内打开网页").performScrollTo().performClick()
+        compose.onNodeWithText("目标包名 / 候选包名 *").assertDoesNotExist()
+        compose.onNodeWithText("保存规则").performClick()
+        compose.onNodeWithText("返回").performClick()
+        compose.runOnIdle { app.clipboardDrafts.offer(ClipData.newPlainText("external", "https://example.com")) }
+        waitFor("新建条目")
+        compose.activityRule.scenario.recreate()
+        waitFor("新建条目")
+        compose.onNodeWithText("应用内打开网页").performScrollTo().assertExists()
+        compose.onNodeWithText("目标应用 *").assertDoesNotExist()
+        compose.onNodeWithText("保存", substring = false).performClick()
+        waitFor("网页草稿")
+        val node = runBlocking { app.repository.all.first().single { it.name == "网页草稿" } }
+        assertEquals(ResourceAction(ActionType.OPEN_WEBVIEW), node.action)
+        assertEquals("https://example.com", node.content.text)
+        assertNull(node.parentId)
+    }
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private val app get() = compose.activity.application as ResourceTreeApplication
     private fun waitFor(text: String) = compose.waitUntil(15000) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }

@@ -5,6 +5,7 @@ import com.example.resouretree.domain.model.*
 fun interface ClipboardWriter { fun write(text: String) }
 fun interface PackageLauncher { fun launch(packageName: String): Boolean }
 fun interface ContentSharer { fun share(content: ResourceContent, target: String) }
+fun interface WebPageOpener { fun open(url: String) }
 
 sealed interface ActionResult {
     data class Success(val message: String) : ActionResult
@@ -12,7 +13,8 @@ sealed interface ActionResult {
 }
 
 class ActionExecutor(private val clipboard: ClipboardWriter, private val launcher: PackageLauncher,
-    private val sharer: ContentSharer = ContentSharer { _, _ -> error("分享服务不可用") }) {
+    private val sharer: ContentSharer = ContentSharer { _, _ -> error("分享服务不可用") },
+    private val web: WebPageOpener = WebPageOpener { error("网页服务不可用") }) {
     fun execute(content: ResourceContent, action: ResourceAction): ActionResult {
         var copied = false
         return try {
@@ -27,6 +29,10 @@ class ActionExecutor(private val clipboard: ClipboardWriter, private val launche
                 }
             }
             if (action.type == ActionType.SHARE) sharer.share(content, action.target)
+            if (action.type == ActionType.OPEN_WEBVIEW) {
+                require(content.type == ContentType.TEXT) { "网页动作需要文字网址" }
+                web.open(requireNotNull(webUrl(content.text)) { "请输入完整的 http:// 或 https:// 网址" })
+            }
             ActionResult.Success(when {
                 copied -> "已复制"
                 action.type == ActionType.NONE -> "此条目未设置动作"

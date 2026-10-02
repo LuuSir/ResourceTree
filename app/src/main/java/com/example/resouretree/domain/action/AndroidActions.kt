@@ -6,6 +6,14 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 
+class AndroidWebPageOpener(context: Context) : WebPageOpener {
+    private val app = context.applicationContext
+    override fun open(url: String) {
+        app.startActivity(Intent(app, com.example.resouretree.WebPageActivity::class.java)
+            .putExtra("url", url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+}
+
 class AndroidClipboardWriter(context: Context) : ClipboardWriter {
     private val clipboard = context.applicationContext.getSystemService(ClipboardManager::class.java)
     override fun write(text: String) { clipboard.setPrimaryClip(ClipData.newPlainText("ResourceTree", text)) }

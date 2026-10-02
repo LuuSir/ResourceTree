@@ -16,6 +16,24 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class ClipboardRulesTest {
+    @Test fun legacyRulesKeepCopyActionAndWebRulePersistsWithoutTarget() {
+        val context = RuntimeEnvironment.getApplication()
+        context.getSharedPreferences("clipboard-rules", 0).edit().putString("rules", """[{"id":"old","prefix":"BV","targets":["com.bilibili.app.in"],"enabled":true}]""").commit()
+        val store = ClipboardRuleStore(context)
+        assertEquals(ActionType.COPY_AND_LAUNCH, store.rules.value.single().actionType)
+        assertEquals(ClipboardMatchType.PREFIX, store.rules.value.single().matchType)
+        store.save(ClipboardRule("web", "https://", targets = emptyList(), actionType = ActionType.OPEN_WEBVIEW))
+        assertEquals(ActionType.OPEN_WEBVIEW, ClipboardRuleStore(context).rules.value.last().actionType)
+        assertTrue(ClipboardRuleStore(context).rules.value.last().targets.isEmpty())
+    }
+    @Test fun wildcardModePersistsAndOnlySameModeDuplicatesAreRejected() {
+        val context = RuntimeEnvironment.getApplication()
+        val store = ClipboardRuleStore(context)
+        val rule = ClipboardRule("glob", "BV", targets = listOf("com.test.app"), matchType = ClipboardMatchType.WILDCARD)
+        store.save(rule)
+        assertEquals(rule, ClipboardRuleStore(context).rules.value.last())
+        assertThrows(IllegalArgumentException::class.java) { store.save(rule.copy(id = "duplicate")) }
+    }
     @Test fun longestEnabledPrefixPreservesTextAndConfigurableName() {
         val rules = listOf(ClipboardRule("1", "B", "通用", listOf("com.test.one")),
             ClipboardRule("2", "BV", targets = listOf("com.test.two")))

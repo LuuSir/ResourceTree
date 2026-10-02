@@ -118,7 +118,10 @@ class TreeJson {
                 val target = it.string(if (version == 1) "packageName" else "target")
                 if (actionType == "LAUNCH_APP" || actionType == "COPY_AND_LAUNCH")
                     require(target.isNotBlank()) { "启动应用的动作缺少 target：$name" }
-                ExportActionDto(actionType, target)
+                if (actionType == "OPEN_WEBVIEW") {
+                    require(content.type == ContentType.TEXT && webUrl(content.text) != null) { "网页动作需要有效的 http:// 或 https:// 网址：$name" }
+                }
+                ExportActionDto(actionType, if (actionType == "OPEN_WEBVIEW") "" else target)
             }
             val created = obj.number("createdAt", now)
             val pinned = obj["isPinned"]?.let {

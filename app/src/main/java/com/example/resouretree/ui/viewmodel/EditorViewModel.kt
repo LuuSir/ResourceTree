@@ -88,7 +88,7 @@ class EditorViewModel(
     fun selectContentType(type: ContentType) {
         if (type == state.value.content.type) return
         change { it.copy(content = ResourceContent(type),
-            actionType = if (type != ContentType.TEXT && it.actionType in listOf(ActionType.COPY, ActionType.COPY_AND_LAUNCH)) ActionType.SHARE else it.actionType) }
+            actionType = if (type != ContentType.TEXT && it.actionType in listOf(ActionType.COPY, ActionType.COPY_AND_LAUNCH, ActionType.OPEN_WEBVIEW)) ActionType.SHARE else it.actionType) }
     }
     fun selectMedia(uri: Uri) {
         val type = state.value.content.type
@@ -106,6 +106,10 @@ class EditorViewModel(
         val form = mutable.value
         if (form.loading || form.saving || form.importingMedia || form.saved || form.loadFailed) return
         if (form.name.isBlank()) { mutable.value = form.copy(error = "请输入名称"); return }
+        if (form.type == NodeType.ITEM && form.actionType == ActionType.OPEN_WEBVIEW &&
+            (form.content.type != ContentType.TEXT || webUrl(form.content.text) == null)) {
+            mutable.value = form.copy(error = "请输入完整的 http:// 或 https:// 网址"); return
+        }
         val launch = form.type == NodeType.ITEM && form.actionType in listOf(ActionType.LAUNCH_APP, ActionType.COPY_AND_LAUNCH)
         if (launch && !Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+").matches(form.target.trim())) {
             mutable.value = form.copy(error = "请选择目标应用"); return

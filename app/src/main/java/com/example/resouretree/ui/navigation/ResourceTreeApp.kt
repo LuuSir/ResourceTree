@@ -35,7 +35,7 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
         if (current?.destination?.route != "browser") return@LaunchedEffect
         val draft = com.example.resouretree.domain.model.ClipboardDraftParser.parse(offered.text, offered.token, rules)
             ?: run { app.clipboardDrafts.clearPending(); return@LaunchedEffect }
-        val target = try { app.appCatalog.resolveTarget(draft.targets) }
+        val target = if (draft.actionType == com.example.resouretree.domain.model.ActionType.OPEN_WEBVIEW) "" else try { app.appCatalog.resolveTarget(draft.targets) }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { draft.targets.first() }
         withContext(Dispatchers.Main.immediate) {
@@ -45,6 +45,7 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
             nav.navigate("editor?type=ITEM&parent=")
             nav.currentBackStackEntry!!.savedStateHandle.apply {
                 set("clipboardName", draft.name); set("clipboardText", draft.text); set("clipboardTarget", target)
+                set("clipboardAction", draft.actionType.name)
             }
             app.clipboardDrafts.consumed(draft.token)
         }
@@ -73,7 +74,7 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
                 if (id == null && clipboardText != null && !handle.contains("contentType")) {
                     handle["name"] = entry.savedStateHandle.get<String>("clipboardName").orEmpty()
                     handle["contentType"] = "TEXT"; handle["contentText"] = clipboardText
-                    handle["actionType"] = "COPY_AND_LAUNCH"
+                    handle["actionType"] = entry.savedStateHandle.get<String>("clipboardAction") ?: "COPY_AND_LAUNCH"
                     handle["target"] = entry.savedStateHandle.get<String>("clipboardTarget").orEmpty()
                 }
                 EditorViewModel(app.repository, handle, id, parent, type, app.appCatalog, app.documents)

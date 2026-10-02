@@ -1,7 +1,7 @@
 package com.example.resouretree.domain.model
 
 enum class NodeType { FOLDER, ITEM }
-enum class ActionType { NONE, COPY, LAUNCH_APP, COPY_AND_LAUNCH, SHARE }
+enum class ActionType { NONE, COPY, LAUNCH_APP, COPY_AND_LAUNCH, SHARE, OPEN_WEBVIEW }
 enum class ContentType { TEXT, IMAGE, VIDEO, FILE }
 
 data class ResourceContent(
