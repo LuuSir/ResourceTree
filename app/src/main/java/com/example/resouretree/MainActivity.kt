@@ -2,6 +2,11 @@ package com.example.resouretree
 
 import android.os.Bundle
 import android.content.ClipboardManager
+import android.content.Intent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
+import com.example.resouretree.overlay.FloatingEntryService
 import androidx.lifecycle.Lifecycle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,6 +15,7 @@ import com.example.resouretree.ui.navigation.ResourceTreeApp
 import com.example.resouretree.ui.theme.ResoureTreeTheme
 
 class MainActivity : ComponentActivity() {
+    private var homeRequest by mutableIntStateOf(0)
     private val clipboard by lazy { getSystemService(ClipboardManager::class.java) }
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener { checkClipboard() }
 
@@ -37,11 +43,23 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        homeRequest = savedInstanceState?.getInt("floatingHomeRequest")
+            ?: if (intent.action == FloatingEntryService.ACTION_HOME) 1 else 0
         enableEdgeToEdge()
         setContent {
             ResoureTreeTheme {
-                ResourceTreeApp(application as ResourceTreeApplication)
+                ResourceTreeApp(application as ResourceTreeApplication, homeRequest) { homeRequest = 0 }
             }
         }
+    }
+    public override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // This is a one-shot navigation request, not a replacement launch intent.
+        if (intent.action == FloatingEntryService.ACTION_HOME) homeRequest++
+        window.decorView.post { checkClipboard() }
+    }
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("floatingHomeRequest", homeRequest)
+        super.onSaveInstanceState(outState)
     }
 }

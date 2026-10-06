@@ -14,14 +14,24 @@ android {
         applicationId = "com.example.resouretree"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 3
+        versionName = "0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val releaseStore = providers.environmentVariable("RESOURCETREE_SIGNING_STORE").orNull
+    signingConfigs {
+        if (releaseStore != null) create("distribution") {
+            storeFile = file(releaseStore)
+            storePassword = providers.environmentVariable("RESOURCETREE_SIGNING_STORE_PASSWORD").get()
+            keyAlias = providers.environmentVariable("RESOURCETREE_SIGNING_ALIAS").get()
+            keyPassword = providers.environmentVariable("RESOURCETREE_SIGNING_KEY_PASSWORD").get()
+        }
+    }
     buildTypes {
         release {
+            if (releaseStore != null) signingConfig = signingConfigs.getByName("distribution")
             optimization {
                 enable = false
             }

@@ -24,7 +24,7 @@ private data class TransferRequest(val ids: Set<String>, val copy: Boolean)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, onEdit: (ResourceNode) -> Unit, onClipboardRules: () -> Unit = {}) {
+fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, onEdit: (ResourceNode) -> Unit, onClipboardRules: () -> Unit = {}, onFloatingEntry: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var menu by remember { mutableStateOf(false) }
@@ -80,6 +80,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
                                 catch (_: Exception) { vm.notify("未找到系统文件选择器") }
                             })
                             DropdownMenuItem(text = { Text("剪贴板规则") }, onClick = { menu = false; onClipboardRules() })
+                            DropdownMenuItem(text = { Text("悬浮按钮") }, onClick = { menu = false; onFloatingEntry() })
                             DropdownMenuItem(text = { Text("关于") }, onClick = { menu = false; about = true })
                         }
                     }
@@ -150,7 +151,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
         DestinationPicker(state.all, state.currentId, excluded, request.copy, request.ids.size, state.busy,
             onSelect = destination, onDismiss = { transfer = null })
     }
-    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.1") },
+    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.3") },
         text = { Text("本地树状快捷资源管理器\n\n所有资源保存在设备上。导入会追加到首页，不覆盖已有内容。\n\n复制后将打开指定应用；目标应用是否识别剪贴板由该应用决定。") },
         confirmButton = { TextButton(onClick = { about = false }) { Text("知道了") } })
 }

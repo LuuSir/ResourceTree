@@ -2,6 +2,10 @@ package com.example.resouretree.ui.navigation
 
 import android.net.Uri
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.CancellationException
@@ -22,7 +26,7 @@ import com.example.resouretree.ui.screens.*
 import com.example.resouretree.ui.viewmodel.*
 
 @Composable
-fun ResourceTreeApp(app: ResourceTreeApplication) {
+fun ResourceTreeApp(app: ResourceTreeApplication, homeRequest: Int = 0, onHomeHandled: () -> Unit = {}) {
     val nav = rememberNavController()
     val browser: BrowserViewModel = viewModel(factory = viewModelFactory { initializer {
         BrowserViewModel(app.repository, app.documents, app.executor, createSavedStateHandle())
@@ -30,7 +34,30 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
     val pending by app.clipboardDrafts.pending.collectAsStateWithLifecycle()
     val rules by app.clipboardRules.rules.collectAsStateWithLifecycle()
     val current by nav.currentBackStackEntryAsState()
-    LaunchedEffect(pending?.token, current?.destination?.route, rules) {
+    var homeReset by rememberSaveable { mutableIntStateOf(0) }
+    var confirmHome by rememberSaveable { mutableStateOf(false) }
+    fun returnHome() {
+        browser.open(null)
+        browser.search("")
+        nav.popBackStack("browser", false)
+        homeReset++
+        confirmHome = false
+        onHomeHandled()
+    }
+    LaunchedEffect(homeRequest, current?.destination?.route) {
+        if (homeRequest == 0 || current == null) return@LaunchedEffect
+        if (current?.destination?.route?.startsWith("editor?") == true) confirmHome = true
+        else returnHome()
+    }
+    if (confirmHome) AlertDialog(
+        onDismissRequest = { confirmHome = false; onHomeHandled() },
+        title = { Text("返回首页？") },
+        text = { Text("返回首页会放弃当前未保存的编辑。") },
+        confirmButton = { TextButton(onClick = { returnHome() }) { Text("放弃并返回") } },
+        dismissButton = { TextButton(onClick = { confirmHome = false; onHomeHandled() }) { Text("继续编辑") } }
+    )
+    LaunchedEffect(pending?.token, current?.destination?.route, rules, homeRequest) {
+        if (homeRequest != 0) return@LaunchedEffect
         val offered = pending ?: return@LaunchedEffect
         if (current?.destination?.route != "browser") return@LaunchedEffect
         val draft = com.example.resouretree.domain.model.ClipboardDraftParser.parse(offered.text, offered.token, rules)
@@ -52,10 +79,16 @@ fun ResourceTreeApp(app: ResourceTreeApplication) {
     }
     NavHost(navController = nav, startDestination = "browser") {
         composable("browser") {
-            BrowserScreen(browser,
-                onCreate = { type, parent -> nav.navigate("editor?type=${type.name}&parent=${Uri.encode(parent.orEmpty())}") },
-                onEdit = { node -> nav.navigate("editor?id=${Uri.encode(node.id)}&type=${node.type.name}") },
-                onClipboardRules = { nav.navigate("clipboard-rules") })
+            key(homeReset) {
+                BrowserScreen(browser,
+                    onCreate = { type, parent -> nav.navigate("editor?type=${type.name}&parent=${Uri.encode(parent.orEmpty())}") },
+                    onEdit = { node -> nav.navigate("editor?id=${Uri.encode(node.id)}&type=${node.type.name}") },
+                    onClipboardRules = { nav.navigate("clipboard-rules") },
+                    onFloatingEntry = { nav.navigate("floating-entry") })
+            }
+        }
+        composable("floating-entry") {
+            FloatingEntryScreen(onBack = { nav.popBackStack() })
         }
         composable("clipboard-rules") {
             ClipboardRulesScreen(app.clipboardRules, onBack = { nav.popBackStack() })
