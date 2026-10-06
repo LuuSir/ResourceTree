@@ -4,6 +4,9 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.view.MotionEvent
 import android.widget.ImageView
+import android.view.WindowManager
+import android.os.Looper
+import com.example.resouretree.overlay.FloatingEntrySettings
 import com.example.resouretree.overlay.FloatingEntryService
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,6 +22,31 @@ import org.robolectric.shadows.ShadowSettings
 class FloatingEntryServiceTest {
     private fun bubble(service: FloatingEntryService): ImageView? =
         FloatingEntryService::class.java.getDeclaredField("bubble").apply { isAccessible = true }.get(service) as ImageView?
+
+    @Test fun sizeUpdatesExistingWindowAndSurvivesRestartWithoutMovingOffScreen() {
+        ShadowSettings.setCanDrawOverlays(true)
+        val controller = Robolectric.buildService(FloatingEntryService::class.java).create()
+        val service = controller.get()
+        val settings = FloatingEntrySettings(service)
+        settings.setSize(36f)
+        service.onStartCommand(Intent(), 0, 1)
+        val view = requireNotNull(bubble(service))
+        val density = service.resources.displayMetrics.density
+        assertEquals((36 * density).toInt(), (view.layoutParams as WindowManager.LayoutParams).width)
+        settings.setSize(96f)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertSame(view, bubble(service))
+        val layout = view.layoutParams as WindowManager.LayoutParams
+        assertEquals((96 * density).toInt(), layout.width)
+        assertEquals(layout.width, layout.height)
+        assertTrue(layout.x + layout.width <= service.resources.displayMetrics.widthPixels)
+        controller.destroy()
+        val restarted = Robolectric.buildService(FloatingEntryService::class.java).create()
+        try {
+            restarted.get().onStartCommand(Intent(), 0, 1)
+            assertEquals((96 * density).toInt(), (bubble(restarted.get())!!.layoutParams as WindowManager.LayoutParams).width)
+        } finally { restarted.destroy() }
+    }
 
     @Test fun missingOverlayPermissionStopsWithoutWindow() {
         ShadowSettings.setCanDrawOverlays(false)

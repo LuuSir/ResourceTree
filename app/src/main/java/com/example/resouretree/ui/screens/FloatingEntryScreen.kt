@@ -2,6 +2,7 @@ package com.example.resouretree.ui.screens
 
 import android.Manifest
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -22,11 +23,23 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.resouretree.overlay.FloatingEntryService
+import com.example.resouretree.overlay.FloatingEntrySettings
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FloatingEntryScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val settings = remember(context) { FloatingEntrySettings(context) }
+    var sizeDp by remember(settings) { mutableIntStateOf(settings.sizeDp) }
+    DisposableEffect(settings) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == FloatingEntrySettings.KEY_SIZE) sizeDp = settings.sizeDp
+        }
+        settings.preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { settings.preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val running by FloatingEntryService.running.collectAsStateWithLifecycle()
     val serviceError by FloatingEntryService.error.collectAsStateWithLifecycle()
@@ -67,6 +80,16 @@ fun FloatingEntryScreen(onBack: () -> Unit) {
             Text("在其他应用复制文字后，点击悬浮的文件树按钮，即可返回首页并按剪贴板规则预填条目。")
             Text("拖动可调整位置。仅回到前台后读取剪贴板，保存前仍需你确认。")
             Text(if (running) "状态：已开启" else "状态：已关闭")
+            Text("悬浮按钮大小：$sizeDp dp")
+            Slider(value = sizeDp.toFloat(), onValueChange = { sizeDp = settings.setSize(it) },
+                valueRange = FloatingEntrySettings.MIN_SIZE.toFloat()..FloatingEntrySettings.MAX_SIZE.toFloat(), steps = 14,
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "悬浮按钮大小" })
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("小", style = MaterialTheme.typography.labelSmall)
+                TextButton(onClick = { sizeDp = settings.setSize(FloatingEntrySettings.DEFAULT_SIZE.toFloat()) }) { Text("恢复默认大小") }
+                Text("大", style = MaterialTheme.typography.labelSmall)
+            }
+            Text("调整立即生效，关闭后再次开启也会保留。", style = MaterialTheme.typography.bodySmall)
             (error ?: serviceError)?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(onClick = {
                 error = null

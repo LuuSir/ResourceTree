@@ -38,11 +38,20 @@ class FloatingEntryService : Service() {
 
     private val windows by lazy { getSystemService(WindowManager::class.java) }
     private val prefs by lazy { getSharedPreferences("floating-entry", MODE_PRIVATE) }
+    private val settings by lazy { FloatingEntrySettings(this) }
+    private val sizeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == FloatingEntrySettings.KEY_SIZE) resizeBubble()
+    }
     private var bubble: ImageView? = null
     private var layout: WindowManager.LayoutParams? = null
     private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        prefs.registerOnSharedPreferenceChangeListener(sizeListener)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP || !Settings.canDrawOverlays(this)) {
@@ -73,7 +82,7 @@ class FloatingEntryService : Service() {
     }
 
     private fun showBubble() {
-        val params = WindowManager.LayoutParams(dp(56), dp(56), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        val params = WindowManager.LayoutParams(dp(settings.sizeDp), dp(settings.sizeDp), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.LEFT
@@ -120,6 +129,15 @@ class FloatingEntryService : Service() {
         bubble = view; layout = params
     }
 
+    private fun resizeBubble() {
+        val view = bubble ?: return
+        layout?.let { params ->
+            params.width = dp(settings.sizeDp); params.height = dp(settings.sizeDp)
+            clamp(params)
+            runCatching { windows.updateViewLayout(view, params) }
+        }
+    }
+
     private fun clamp(params: WindowManager.LayoutParams) {
         val metrics = resources.displayMetrics
         params.x = params.x.coerceIn(0, (metrics.widthPixels - params.width).coerceAtLeast(0))
@@ -133,6 +151,7 @@ class FloatingEntryService : Service() {
     }
 
     override fun onDestroy() {
+        prefs.unregisterOnSharedPreferenceChangeListener(sizeListener)
         bubble?.let { runCatching { windows.removeView(it) } }
         bubble = null; layout = null; state.value = false
         stopForeground(STOP_FOREGROUND_REMOVE)

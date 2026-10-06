@@ -1,5 +1,7 @@
 # 验证结果
 
+悬浮按钮尺寸与安装修复版本（2026-10-06）：0.5 APK 已成功覆盖安装到已连接的 Android 13 真机，未卸载且首次安装时间保持不变。此前 `PackageInfo is null` 的根因是手机 `/sdcard/Download/ResourceTree-v0.4.apk` 下载文件损坏（ZIP/signature 校验失败），不是应用包名或数据库问题；当前 0.5 APK 安装成功并能冷启动。新增悬浮按钮 36–96 dp 尺寸调节，默认 56 dp，修改立即更新窗口并持久化；真机将滑杆调到 84 dp 后验证系统窗口为 168×168 px（320 dpi），随后恢复原 40 dp。Room schema 仍为 3，904 个已有节点与规则可正常读取。当前构建、119 项本地单元/Compose 测试、AndroidTest APK 编译和 lint 均通过（0 errors，37 warnings）。当前 debug APK SHA-256：`D2F7C68652EB10CB8AB18B39627D320B3FC85055DEA50C23D4ED35CE525F2621`。悬浮按钮专用 instrumentation 因 MIUI UI 自动化窗口枚举卡住而中止，但已用 adb UI 与 `dumpsys window` 完成等价真机验证。
+
 通配符规则版本（2026-10-02）：构建、99 项本地测试、19 项正式真机回归、lint 通过（0 errors）。已覆盖安装；前置快照中的 896 个节点全部保留且逐字段未变，期间新增 1 个节点，最终 897 个。规则兼容保存。详见 [CLIPBOARD-WILDCARDS.md](CLIPBOARD-WILDCARDS.md)。
 
 网页唤起 App 修复（2026-09-30）：构建、92 项本地测试、18 项正式真机回归及 lint 通过（0 errors）。用户给出的抖音短链已实测打开抖音详情页。覆盖安装前后 897 个节点及规则一致；旧的停滞诊断脚本不计入正式回归。详情见 [WEBVIEW-APP-LINKS.md](WEBVIEW-APP-LINKS.md)。

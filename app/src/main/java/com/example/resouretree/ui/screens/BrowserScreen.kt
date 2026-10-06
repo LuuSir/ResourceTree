@@ -177,7 +177,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
         DestinationPicker(state.all, state.currentId, excluded, request.copy, request.ids.size, state.busy,
             onSelect = destination, onDismiss = { transfer = null })
     }
-    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.4") },
+    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.5") },
         text = { Text("本地树状快捷资源管理器\n\n所有资源保存在设备上。导入会追加到首页，不覆盖已有内容。\n\n复制后将打开指定应用；目标应用是否识别剪贴板由该应用决定。") },
         confirmButton = { TextButton(onClick = { about = false }) { Text("知道了") } })
 }
