@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,10 +15,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.resouretree.domain.model.*
 import com.example.resouretree.ui.components.ReorderableNodeList
 import com.example.resouretree.ui.components.DestinationPicker
+import com.example.resouretree.ui.components.ResourceGraphView
 import com.example.resouretree.ui.viewmodel.BrowserViewModel
 
 private data class TransferRequest(val ids: Set<String>, val copy: Boolean)
@@ -30,6 +35,8 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
     var menu by remember { mutableStateOf(false) }
     var create by remember { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
+    var graphMode by rememberSaveable { mutableStateOf(false) }
+    var expandAll by rememberSaveable { mutableStateOf(false) }
     var selected by remember { mutableStateOf<ResourceNode?>(null) }
     var deleting by remember { mutableStateOf<Set<String>?>(null) }
     var transfer by remember { mutableStateOf<TransferRequest?>(null) }
@@ -45,18 +52,27 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(vm::importDocument) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { it?.let(vm::exportDocument) }
     LaunchedEffect(vm) { vm.messages.collect { snackbar.showSnackbar(it) } }
-    BackHandler(selectionMode || searching || state.currentId != null) {
+    BackHandler(selectionMode || searching || state.currentId != null || graphMode) {
         if (!state.busy) {
             if (selectionMode) clearSelection()
-            else if (searching) { searching = false; vm.search("") } else vm.up()
+            else if (searching) { searching = false; vm.search("") }
+            else if (state.currentId != null) vm.up() else graphMode = false
         }
     }
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(if (selectionMode) "已选 ${checked.size} 项" else if (searching) "全局搜索" else "ResourceTree") },
-                navigationIcon = { if (selectionMode || searching || state.currentId != null) TextButton(enabled = !state.busy, onClick = {
+            TopAppBar(title = {
+                Text(if (selectionMode) "已选 ${checked.size} 项" else if (searching) "全局搜索" else "ResourceTree",
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = if (selectionMode || searching) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                    modifier = if (selectionMode || searching) Modifier else Modifier
+                        .clickable(enabled = !state.busy) { graphMode = !graphMode }
+                        .semantics { contentDescription = if (graphMode) "切换到列表视角" else "切换到图视角" })
+            },
+                navigationIcon = { if (selectionMode || searching || state.currentId != null || graphMode) TextButton(enabled = !state.busy, onClick = {
                     if (selectionMode) clearSelection()
-                    else if (searching) { searching = false; vm.search("") } else vm.up()
+                    else if (searching) { searching = false; vm.search("") }
+                    else if (state.currentId != null) vm.up() else graphMode = false
                 }) { Text(if (selectionMode) "取消" else "返回") } },
                 actions = {
                     if (selectionMode) {
@@ -98,7 +114,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
                     onClick = { deleting = checked }) { Text("删除") }
             }
         },
-        floatingActionButton = { if (!selectionMode && !searching && !state.loading && state.error == null && !state.busy) ExtendedFloatingActionButton(onClick = { create = true }) { Text("＋ 新建") } }
+        floatingActionButton = { if (!graphMode && !selectionMode && !searching && !state.loading && state.error == null && !state.busy) ExtendedFloatingActionButton(onClick = { create = true }) { Text("＋ 新建") } }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -107,9 +123,19 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
                 TextButton(enabled = !selectionMode && !state.busy, onClick = { vm.open(null) }) { Text("首页") }
                 state.breadcrumb.forEach { node -> Text("›"); TextButton(enabled = !selectionMode && !state.busy, onClick = { vm.open(node.id) }) { Text(node.name) } }
             }
+            if (graphMode && !searching) Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("图视角", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text("展开全部", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = expandAll, onCheckedChange = { expandAll = it }, enabled = !state.busy,
+                    modifier = Modifier.semantics { contentDescription = "展开全部" })
+            }
             when {
                 state.error != null -> CenterMessage(state.error.orEmpty(), "重试", vm::initialize)
                 state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                graphMode && !searching -> ResourceGraphView(state.all, state.currentId, expandAll, !state.busy) { node ->
+                    if (node.type == NodeType.FOLDER) vm.open(node.id) else vm.execute(node)
+                }
                 searching && state.query.isBlank() -> CenterMessage("输入关键词，搜索所有目录中的条目")
                 rows.isEmpty() -> CenterMessage(if (searching) "没有匹配的条目" else "这里还没有内容\n点击 + 创建文件夹或条目")
                 else -> key(state.currentId, searching) {
@@ -151,7 +177,7 @@ fun BrowserScreen(vm: BrowserViewModel, onCreate: (NodeType, String?) -> Unit, o
         DestinationPicker(state.all, state.currentId, excluded, request.copy, request.ids.size, state.busy,
             onSelect = destination, onDismiss = { transfer = null })
     }
-    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.3") },
+    if (about) AlertDialog(onDismissRequest = { about = false }, title = { Text("ResourceTree 0.4") },
         text = { Text("本地树状快捷资源管理器\n\n所有资源保存在设备上。导入会追加到首页，不覆盖已有内容。\n\n复制后将打开指定应用；目标应用是否识别剪贴板由该应用决定。") },
         confirmButton = { TextButton(onClick = { about = false }) { Text("知道了") } })
 }

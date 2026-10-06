@@ -64,7 +64,7 @@ fun FloatingEntryScreen(onBack: () -> Unit) {
     }
     Scaffold(topBar = { TopAppBar(title = { Text("悬浮按钮") }, navigationIcon = { TextButton(onClick = onBack) { Text("返回") } }) }) { padding ->
         Column(Modifier.padding(padding).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("在其他应用复制文字后，点击悬浮的“树”按钮，即可返回首页并按剪贴板规则预填条目。")
+            Text("在其他应用复制文字后，点击悬浮的文件树按钮，即可返回首页并按剪贴板规则预填条目。")
             Text("拖动可调整位置。仅回到前台后读取剪贴板，保存前仍需你确认。")
             Text(if (running) "状态：已开启" else "状态：已关闭")
             (error ?: serviceError)?.let { Text(it, color = MaterialTheme.colorScheme.error) }

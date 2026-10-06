@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.*
-import android.widget.TextView
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.example.resouretree.MainActivity
@@ -38,7 +38,7 @@ class FloatingEntryService : Service() {
 
     private val windows by lazy { getSystemService(WindowManager::class.java) }
     private val prefs by lazy { getSharedPreferences("floating-entry", MODE_PRIVATE) }
-    private var bubble: TextView? = null
+    private var bubble: ImageView? = null
     private var layout: WindowManager.LayoutParams? = null
     private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
 
@@ -80,10 +80,11 @@ class FloatingEntryService : Service() {
             x = prefs.getInt("x", dp(12)); y = prefs.getInt("y", dp(180))
         }
         clamp(params)
-        val view = TextView(this).apply {
-            text = "树"; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
+        val view = ImageView(this).apply {
+            setImageResource(R.drawable.ic_launcher_foreground)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "返回 ResourceTree 首页并读取剪贴板"; isClickable = true
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(50, 91, 145)) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.rgb(255, 241, 219)) }
             elevation = dp(6).toFloat()
             setOnClickListener {
                 try { startActivity(homeIntent(this@FloatingEntryService)) }

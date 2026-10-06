@@ -3,7 +3,7 @@ package com.example.resouretree
 import android.app.NotificationManager
 import android.content.Intent
 import android.view.MotionEvent
-import android.widget.TextView
+import android.widget.ImageView
 import com.example.resouretree.overlay.FloatingEntryService
 import org.junit.Assert.*
 import org.junit.Test
@@ -17,8 +17,8 @@ import org.robolectric.shadows.ShadowSettings
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FloatingEntryServiceTest {
-    private fun bubble(service: FloatingEntryService): TextView? =
-        FloatingEntryService::class.java.getDeclaredField("bubble").apply { isAccessible = true }.get(service) as TextView?
+    private fun bubble(service: FloatingEntryService): ImageView? =
+        FloatingEntryService::class.java.getDeclaredField("bubble").apply { isAccessible = true }.get(service) as ImageView?
 
     @Test fun missingOverlayPermissionStopsWithoutWindow() {
         ShadowSettings.setCanDrawOverlays(false)

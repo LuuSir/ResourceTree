@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+<title>ResourceTree — warm folder tree</title>
+<rect width="108" height="108" rx="24" fill="#FFF1DB"/>
+<path d="M24,37 Q24,29 32,29 L43,29 Q46,29 49,33 L52,36 L77,36 Q84,36 84,43 L84,71 Q84,79 76,79 L32,79 Q24,79 24,71 Z" fill="#F5B568"/>
+<path d="M24,43 Q24,37 31,37 L77,37 Q84,37 84,44 L84,71 Q84,79 76,79 L32,79 Q24,79 24,71 Z" fill="#DF783E"/>
+<path d="M54,68 L54,55 M43,46 L43,51 Q43,55 47,55 L61,55 Q65,55 65,51 L65,46" fill="none" stroke="#FFF7E8" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M47,44 A4,4 0,1 1,39,44 A4,4 0,1 1,47,44 M69,44 A4,4 0,1 1,61,44 A4,4 0,1 1,69,44 M58,68 A4,4 0,1 1,50,68 A4,4 0,1 1,58,68" fill="#FFF7E8"/>
+</svg>
