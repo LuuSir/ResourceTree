@@ -43,3 +43,5 @@ v0.4（versionCode 4）沿用之前版本的签名和数据库结构，可直接
 本地稿件不属于公开源码，已移出公开 Git 历史并加入忽略规则。清理历史后旧版本标签的提交哈希有所改变，已有 APK 的签名与安装数据不受影响。
 
 完整本地验证命令：`assembleDebug testDebugUnitTest assembleDebugAndroidTest lintDebug assembleRelease lintRelease`。设备回归可运行常规 Android 测试；数据保留检查默认跳过，需明确传入 `preservationMode=snapshot` 或 `compare`。比较模式还需提供快照返回的四个字段：`snapshotNodes`、`snapshotTree`、`snapshotRules`、`snapshotSchema`。
+
+2026-10-08 已完成 Android 13 真机回归：22 项通过，手动升级检查默认跳过；覆盖安装正式 Release 后显式数据比较另行通过。图过渡测试使用独立资源，不写入现有资源树。MIUI 可能阻挡测试宿主的后台页面启动，测试时需允许该行为，结束后恢复原设置。详细结果见 `BUILD-RESULTS.md`。

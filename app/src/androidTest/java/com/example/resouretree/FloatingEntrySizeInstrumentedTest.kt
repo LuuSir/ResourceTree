@@ -46,6 +46,11 @@ class FloatingEntrySizeInstrumentedTest {
         val service = Intent(app, FloatingEntryService::class.java)
         val dumps = BoundedWindowDump()
         fun start() = compose.runOnIdle { ContextCompat.startForegroundService(app, service) }
+        fun awaitControls() = compose.waitUntil(10_000) {
+            // External-app tests can leave a pending window transition on the device.
+            compose.onAllNodesWithContentDescription("悬浮按钮大小")
+                .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+        }
         fun awaitWidth(size: Int) {
             val expected = (size * app.resources.displayMetrics.density).roundToInt()
             val deadline = SystemClock.elapsedRealtime() + 10_000
@@ -64,13 +69,16 @@ class FloatingEntrySizeInstrumentedTest {
             compose.setContent { ResoureTreeTheme { FloatingEntryScreen(onBack = {}) } }
             start()
             awaitWidth(settings.sizeDp)
+            awaitControls()
             compose.onNodeWithContentDescription("悬浮按钮大小").performSemanticsAction(SemanticsActions.SetProgress) { it(84f) }
             awaitWidth(84)
             assertEquals(84, FloatingEntrySettings(app).sizeDp)
+            awaitControls()
             compose.onNodeWithText("关闭悬浮按钮", substring = false).performScrollTo().performClick()
             compose.waitUntil(10_000) { !FloatingEntryService.running.value }
             start()
             awaitWidth(84)
+            awaitControls()
             compose.onNodeWithText("恢复默认大小").performScrollTo().performClick()
             awaitWidth(FloatingEntrySettings.DEFAULT_SIZE)
         } finally {
