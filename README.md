@@ -1,4 +1,4 @@
-# ResourceTree 0.5
+# ResourceTree 0.6
 
 一款本地快捷资源管理器。
 
@@ -33,3 +33,13 @@ v0.3 为兼容已发布的 v0.2，沿用原安装包的签名证书，版本号�
 图标采用米白与暖橙的文件树设计；桌面、自适应形状、单色主题图标和悬浮入口保持一致。矢量源文件见 `design/resourcetree-icon.svg`，预览见 `design/icon-variants.png`。
 
 v0.4（versionCode 4）沿用之前版本的签名和数据库结构，可直接覆盖安装。没有连接设备时，只执行本地测试与测试包编译，不将其标记为真机验证。
+
+## 连续图过渡与正式发布
+
+图视角进入文件夹、返回上级或切换「展开全部」时保留当前画布，节点位置、连线、透明度和视口同步过渡。快速进入／返回从当前显示帧衔接，点击坐标与显示位置一致。
+
+发布安装包使用非调试 Release 构建，沿用原签名；发布工具 `tools/publish_release.py` 会拒绝 Debug APK、签名不一致、版本不匹配或损坏的 ZIP，并验证远端分支／标签和上传文件摘要。
+
+本地稿件不属于公开源码，已移出公开 Git 历史并加入忽略规则。清理历史后旧版本标签的提交哈希有所改变，已有 APK 的签名与安装数据不受影响。
+
+完整本地验证命令：`assembleDebug testDebugUnitTest assembleDebugAndroidTest lintDebug assembleRelease lintRelease`。设备回归可运行常规 Android 测试；数据保留检查默认跳过，需明确传入 `preservationMode=snapshot` 或 `compare`。比较模式还需提供快照返回的四个字段：`snapshotNodes`、`snapshotTree`、`snapshotRules`、`snapshotSchema`。

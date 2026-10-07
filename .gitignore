@@ -41,3 +41,4 @@ verification/clipboard/
 
 # Private manuscript: never publish or include in source archives.
 /ResourceTree_公众号推文.docx
+__pycache__/
